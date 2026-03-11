@@ -1,0 +1,17 @@
+{
+    "패션": [
+      { "name": "나이키", "domain": "nike.com" },
+      { "name": "아디다스", "domain": "adidas.com" },
+      { "name": "마뗑킴", "domain": "matinkim.com" },
+      { "name": "블랙업", "domain": "blackup.co.kr" }
+    ],
+    "뷰티": [
+      { "name": "샤넬", "domain": "chanel.com" },
+      { "name": "디올", "domain": "dior.com" },
+      { "name": "이니스프리", "domain": "innisfree.com" }
+    ],
+    "전자": [
+      { "name": "삼성", "domain": "samsung.com" },
+      { "name": "애플", "domain": "apple.com" }
+    ]
+  }
