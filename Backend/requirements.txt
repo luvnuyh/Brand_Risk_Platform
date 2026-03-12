@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+sqlalchemy
+pymysql
+python-dotenv
+requests
+pandas
+scikit-learn
+googleapiclient
+torch
+passlib
+jose
