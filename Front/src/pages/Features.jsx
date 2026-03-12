@@ -23,8 +23,7 @@ export default function Features() {
  autoScrolling={true}
  fitToSection={true}
  keyboardScrolling={true}
- normalScrollElements=".allow-scroll"
-
+ 
   afterLoad={(origin, destination) => {
     // Section index 확인 (0부터 시작)
     if (destination.index === 2) {
@@ -128,7 +127,7 @@ export default function Features() {
 
             {/* SECTION 3 — MONITORING */}
 <div className="section">
-  <div className="relative min-h-screen bg-gradient-to-br from-slate-900 to-blue-950 text-white flex items-center px-16 pt-24 ">
+  <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-900 to-blue-950 text-white flex items-center px-16 pt-24 ">
 
     {/* Glow Background */}
     <div className="absolute w-[500px] h-[500px] bg-blue-500/20 rounded-full blur-[120px] top-[-100px] left-[-100px]" />

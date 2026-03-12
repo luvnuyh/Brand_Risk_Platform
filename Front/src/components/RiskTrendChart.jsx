@@ -73,21 +73,17 @@ export default function RiskTrendChart({ data = [] }) {
     >
       <div className="flex items-end justify-between gap-4">
         <div>
-          <h2 className="text-xl font-extrabold text-slate-900">Risk Trend</h2>
+          <h2 className="text-xl font-extrabold text-slate-900">리스크 추이</h2>
           <div className="text-sm text-slate-600 mt-1">
-            Negative / Positive sentiment & Risk score over time
+          기간별 감성 분석 및 리스크 점수 변화
           </div>
-        </div>
-
-        <div className="text-xs text-slate-600">
-          Hover to inspect daily signals
         </div>
       </div>
 
       <div className="mt-5 h-[280px]">
         {!hasData ? (
           <div className="h-full rounded-2xl bg-white/35 border border-white/50 flex items-center justify-center text-slate-600">
-            No trend data
+            표시할 데이터가 없습니다.
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
@@ -125,6 +121,7 @@ export default function RiskTrendChart({ data = [] }) {
                 strokeWidth={3}
                 dot={false}
                 activeDot={{ r: 5 }}
+                stroke="#ef4444"
               />
               <Line
                 type="monotone"
@@ -133,6 +130,7 @@ export default function RiskTrendChart({ data = [] }) {
                 strokeWidth={3}
                 dot={false}
                 activeDot={{ r: 5 }}
+                stroke="#22c55e"
               />
               <Line
                 type="monotone"
@@ -141,6 +139,7 @@ export default function RiskTrendChart({ data = [] }) {
                 strokeWidth={3}
                 dot={false}
                 activeDot={{ r: 5 }}
+                stroke="#3b82f6"
               />
             </LineChart>
           </ResponsiveContainer>
