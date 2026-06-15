@@ -26,17 +26,6 @@ export default function DashboardPreview() {
           <span>Negative 58%</span>
         </div>
       </div>
-
-      <div className="mt-6 flex flex-wrap gap-2">
-        {["배송", "환불", "품질", "가격"].map((k) => (
-          <span
-            key={k}
-            className="px-3 py-1 rounded-full bg-white/40 border border-white/40 text-xs text-slate-700"
-          >
-            {k}
-          </span>
-        ))}
-      </div>
     </motion.div>
   );
 }

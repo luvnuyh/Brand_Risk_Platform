@@ -2,6 +2,7 @@ import { Routes, Route } from "react-router-dom";
 
 import Layout from "../components/Layout";
 
+import Home from "../pages/Home";
 import Features from "../pages/Features";
 import Result from "../pages/Result";
 import Login from "../pages/Login";
@@ -23,14 +24,15 @@ import PrivateRoute from "./PrivateRoute";
 export default function Router() {
   return (
     <Routes>
+
+      {/* Home — Layout 밖, Navbar 포함 안 함 */}
+      <Route path="/" element={<Home />} />
+
       <Route element={<Layout />}>
 
         {/* Public Pages */}
-        <Route path="/" element={<Features />} />
         <Route path="/features" element={<Features />} />
-
         <Route path="/result" element={<Result />} />
-
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
 
@@ -58,7 +60,6 @@ export default function Router() {
             </PrivateRoute>
           }
         />
-
         <Route
           path="/settings/activity-logs"
           element={
@@ -67,7 +68,6 @@ export default function Router() {
             </PrivateRoute>
           }
         />
-
         <Route
           path="/settings/team"
           element={
@@ -76,7 +76,6 @@ export default function Router() {
             </PrivateRoute>
           }
         />
-
         <Route
           path="/settings/alerts"
           element={
