@@ -6,7 +6,7 @@ import models
 from app import router  # 🔥 router만 import
 from database import init_db
 from fastapi.middleware.cors import CORSMiddleware
-
+from routers import invite
 
 app = FastAPI()
 
@@ -30,3 +30,6 @@ init_db()
 app.include_router(router)  # 🔥 여기에 등록
 
 Base.metadata.create_all(bind=engine)
+
+app.include_router(invite.router,prefix="/invite")
+

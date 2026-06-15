@@ -10,3 +10,5 @@ googleapiclient
 torch
 passlib
 jose
+openai 
+transformers

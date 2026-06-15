@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, Text, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, DateTime, Text, ForeignKey, Enum as SAEnum
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from database import Base
@@ -21,6 +21,9 @@ class BrandRiskAnalysis(Base):
     risk_level        = Column(String(20))
     final_risk_score  = Column(Float)
     person_risk_score = Column(Float)
+
+    taxonomy_summary = Column(Text)
+    crisis_feed = Column(Text)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -99,6 +102,7 @@ class Brand(Base):
     company = relationship("Company", back_populates="brands")
     users   = relationship("User",    back_populates="brand")
     persons = relationship("BrandPerson", back_populates="brand", cascade="all, delete-orphan")
+    invitations = relationship("Invitation", back_populates="brand", cascade="all, delete-orphan")
 
 
 class User(Base):
@@ -109,8 +113,30 @@ class User(Base):
     password = Column(String(255))
     name     = Column(String(255))
 
+    plan              = Column(SAEnum('personal', 'pro', 'enterprise'), nullable=False, default='pro')
+    slack_webhook_url = Column(String(500), nullable=True)
+
     company_id = Column(Integer, ForeignKey("companies.id"))
     brand_id   = Column(Integer, ForeignKey("brands.id"))
 
-    company = relationship("Company", back_populates="users")
-    brand   = relationship("Brand",   back_populates="users")
+    company     = relationship("Company", back_populates="users")
+    brand       = relationship("Brand",   back_populates="users")
+    # 내가 보낸 초대들
+    sent_invites = relationship("Invitation", back_populates="inviter", cascade="all, delete-orphan")
+
+
+class Invitation(Base):
+    __tablename__ = "invitations"
+
+    id         = Column(Integer, primary_key=True, index=True)
+    brand_id   = Column(Integer, ForeignKey("brands.id",  ondelete="CASCADE"), nullable=False)
+    inviter_id = Column(Integer, ForeignKey("users.id",   ondelete="CASCADE"), nullable=False)
+    email      = Column(String(255), nullable=False)
+    token      = Column(String(512), nullable=False, unique=True)
+    status     = Column(SAEnum('pending', 'accepted', 'expired'), default='pending')
+    expires_at = Column(DateTime, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    brand   = relationship("Brand", back_populates="invitations")
+    inviter = relationship("User",  back_populates="sent_invites")
+
