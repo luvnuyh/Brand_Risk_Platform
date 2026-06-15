@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 from concurrent.futures import ThreadPoolExecutor
 
-from services.gemini_service import generate_risk_report
+from services.gpt_service import generate_risk_report
 from services.instagram_service import fetch_instagram_data
 
 from database import get_db
