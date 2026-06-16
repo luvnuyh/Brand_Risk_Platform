@@ -1,228 +1,168 @@
-# RISKLENS
 
-> AI 기반 브랜드 및 연관 인물 리스크 통합 분석 플랫폼
+<div align="center">
+<img src="./docs/logo.png" width="120" alt="RISKLENS Logo"/>
+<br/><br/>
 
-RISKLENS는 온라인 데이터와 AI 기반 자연어 처리 기술을 활용하여 브랜드와 연관 인물의 평판 리스크를 분석하고 시각화하는 플랫폼입니다.
+<p align="center">
+  <img src="https://img.shields.io/badge/React-61DAFB?style=for-the-badge&logo=react&logoColor=black"/>
+  <img src="https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white"/>
+  <img src="https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white"/>
+  <img src="https://img.shields.io/badge/MySQL-4479A1?style=for-the-badge&logo=mysql&logoColor=white"/>
+  <img src="https://img.shields.io/badge/OpenAI-412991?style=for-the-badge&logo=openai&logoColor=white"/>
+  <br/>
+  <img src="https://img.shields.io/badge/KoBERT-FF6B6B?style=for-the-badge&logo=pytorch&logoColor=white"/>
+  <img src="https://img.shields.io/badge/PyTorch-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white"/>
+  <img src="https://img.shields.io/badge/Tailwind CSS-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white"/>
+  <img src="https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white"/>
+</p>
+<br/>
 
-뉴스, 블로그, 카페, 유튜브, 인스타그램 등 다양한 채널의 데이터를 수집하여 감성 분석, 핵심 이슈 분석, 소비자 행동 의도 분석을 수행하고 브랜드 위험도를 정량화된 Risk Score로 제공합니다.
+뉴스 · 블로그 · 카페 · 유튜브 · 인스타그램 데이터를 AI로 분석하여
+브랜드 위험 신호를 조기에 탐지하는 리스크 모니터링 플랫폼
 
+
+
+<br/>
+</div>
 ---
 
-## 프로젝트 개요
+## 📌 프로젝트 개요
 
-기업의 브랜드 가치는 제품 경쟁력뿐 아니라 소비자 인식과 평판에 의해 크게 영향을 받습니다.
+기업의 브랜드 가치는 제품 경쟁력뿐 아니라 **소비자 인식과 평판**에 의해 크게 영향을 받습니다.
 
 최근 SNS와 온라인 커뮤니티를 통해 부정적 이슈가 빠르게 확산되면서 브랜드 이미지 훼손, 매출 감소, 불매 운동 등의 리스크가 증가하고 있습니다.
 
-RISKLENS는 이러한 문제를 해결하기 위해 온라인 여론을 실시간에 가깝게 분석하고 브랜드 및 연관 인물의 위험 신호를 조기에 탐지할 수 있도록 설계되었습니다.
+**RISKLENS**는 온라인 여론을 실시간에 가깝게 분석하고, 브랜드 및 연관 인물의 위험 신호를 조기에 탐지할 수 있도록 설계된 AI 분석 플랫폼입니다.
 
 ---
 
-## 주요 기능
+## ✨ 주요 기능
 
-### 브랜드 리스크 분석
-
-* 브랜드 관련 온라인 데이터 수집
-* 브랜드 Risk Score 산출
-* 긍정 / 부정 / 중립 감성 분석
-* 핵심 이슈 탐지
-* 소비자 행동 의도 분석
-
-### 연관 인물 리스크 분석
-
-* CEO
-* 광고 모델
-* 브랜드 홍보 인물
-
-등 브랜드와 연관된 인물의 리스크 분석 지원
-
-### AI 리포트 생성
-
-* 브랜드 현황 요약
-* 위험 요인 분석
-* 대응 전략 초안 생성
-
-### 대시보드
-
-* 감성 비율 시각화
-* 위험도 게이지
-* 플랫폼별 여론 비교
-* 주요 이슈 모니터링
-
-### PDF Export
-
-* 분석 결과 PDF 저장
-* 보고서 공유 기능
+| 기능 | 설명 |
+|------|------|
+| 🏷️ **브랜드 리스크 분석** | 온라인 데이터 수집 · Risk Score 산출 · 감성 분석 · 핵심 이슈 탐지 |
+| 👤 **연관 인물 리스크 분석** | CEO · 광고 모델 · 홍보 인물 등 연관 인물의 평판 리스크 분석 |
+| 🤖 **AI 리포트 생성** | 브랜드 현황 요약 · 위험 요인 분석 · 대응 전략 초안 자동 생성 |
+| 📊 **대시보드 시각화** | 감성 비율 · 위험도 게이지 · 플랫폼별 여론 비교 · 이슈 모니터링 |
+| 📄 **PDF Export** | 분석 결과 PDF 저장 및 보고서 공유 |
 
 ---
 
-## 데이터 수집 채널
+## 🌐 데이터 수집 채널
 
-### Naver
+```
+Naver          YouTube         Instagram
+─────────      ─────────       ─────────
+뉴스            영상 메타데이터    게시글
+블로그           댓글             댓글
+카페
+```
 
-* 뉴스
-* 블로그
-* 카페
-
-### YouTube
-
-* 영상 메타데이터
-* 댓글
-
-### Instagram
-
-* 게시글
-* 댓글
-
-분석 요청 시 최신 데이터를 수집하는 On-Demand 방식으로 동작합니다.
+> 분석 요청 시 최신 데이터를 수집하는 **On-Demand** 방식으로 동작합니다.
 
 ---
 
-## AI 분석 파이프라인
+## 🧠 AI 분석 파이프라인
 
-```text
+```
 데이터 수집
-      ↓
+    │
+    ▼
 KoBERT 감성 분석
-      ↓
-신뢰도 확인
-      ↓
- ┌─────────────┐
- │ score ≥ 0.6 │ → 결과 사용
- └─────────────┘
-      ↓
- ┌─────────────┐
- │ score < 0.6 │ → GPT-4o-mini 재분석
- └─────────────┘
-      ↓
-최종 감성 분류
-      ↓
-핵심 이슈 분석
-      ↓
-행동 의도 분석
-      ↓
-Risk Score 산출
+    │
+    ├── score ≥ 0.6 ──▶ 결과 사용
+    │
+    └── score < 0.6 ──▶ GPT-4o-mini 재분석
+                              │
+                              ▼
+                        최종 감성 분류
+                              │
+                    ┌─────────┼─
+                    ▼         ▼         
+               핵심 이슈   행동 의도   
+               분석        분석        
 ```
 
 ---
 
-## Risk Score 계산
 
-Risk Score는 0~100점 범위로 계산됩니다.
 
-| 요소          | 최대 점수 |
-| ----------- | ----: |
-| 감성 비율       |    65 |
-| 부정 강도       |    15 |
-| Taxonomy 분석 |    13 |
-| 확산성         |     8 |
-
-위 요소를 가중 합산하여 최종 위험도를 산출합니다.
 
 ---
 
-## KoBERT Fine-Tuning
+## 🛠️ 기술 스택
 
-총 4차례 파인튜닝을 진행하였으며 성능이 지속적으로 향상되었습니다.
-
-| 단계 | Accuracy |
-| -- | -------: |
-| 1차 |   70.47% |
-| 2차 |   72.93% |
-| 3차 |   73.67% |
-| 4차 |   74.27% |
-
-F1-Score 역시 약 73% 수준까지 향상되었습니다.
-
----
-
-## 기술 스택
-
-### Frontend
-
-* React
-* Vite
-* Tailwind CSS
-* Axios
-* Recharts
-* Framer Motion
-
-### Backend
-
-* FastAPI
-* Python
-
-### Database
-
-* MySQL
-* SQLAlchemy
-* PyMySQL
-
-### AI
-
-* KoBERT
-* GPT-4o-mini
-* Transformers
-* PyTorch
-* Scikit-Learn
-
-### External API
-
-* Google API Client
+<table>
+  <tr>
+    <td align="center"><b>Frontend</b></td>
+    <td>React · Vite · Tailwind CSS · Axios · Recharts · Framer Motion</td>
+  </tr>
+  <tr>
+    <td align="center"><b>Backend</b></td>
+    <td>FastAPI · Python</td>
+  </tr>
+  <tr>
+    <td align="center"><b>Database</b></td>
+    <td>MySQL · SQLAlchemy · PyMySQL</td>
+  </tr>
+  <tr>
+    <td align="center"><b>AI</b></td>
+    <td>KoBERT · GPT-4o-mini · Transformers · PyTorch · Scikit-Learn</td>
+  </tr>
+  <tr>
+    <td align="center"><b>External API</b></td>
+    <td>Google API Client</td>
+  </tr>
+</table>
 
 ---
 
-## 프로젝트 구조
+## 📁 프로젝트 구조
 
-```text
-Brand_Risk_Platform
-├── Front
-│   ├── src
-│   ├── public
+```
+Brand_Risk_Platform/
+├── Front/
+│   ├── src/
+│   ├── public/
 │   └── package.json
 │
-├── Backend
-│   ├── routers
-│   ├── services
-│   ├── utils
+├── Backend/
+│   ├── routers/
+│   ├── services/
+│   ├── utils/
 │   ├── models.py
 │   ├── database.py
 │   └── requirements.txt
 │
+├── docs/
 └── README.md
 ```
 
 ---
 
-## 차별점
+## 💡 기존 서비스와의 차별점
 
-기존 브랜드 모니터링 서비스가 언급량과 키워드 빈도 중심 분석에 집중한다면 RISKLENS는
+기존 브랜드 모니터링 서비스가 **언급량 · 키워드 빈도** 중심이라면, RISKLENS는 한 단계 더 나아갑니다.
 
-* 감성 분석
-* 소비자 행동 의도 분석
-* 핵심 이슈 분석
-* 연관 인물 리스크 분석
-* AI 기반 대응 전략 제안
+```
+언급량 분석  →  감성 분석  →  행동 의도 분석  →  대응 전략 제안
+```
 
-까지 제공하여 보다 실질적인 의사결정을 지원합니다.
-
----
-
-## 향후 계획
-
-* Instagram 외 추가 채널 확장
-* Redis 기반 데이터 캐싱
-* 실시간 위험 알림
-* 이메일 알림
-* Slack 연동
-* AI 리포트 고도화
+- 소비자의 **감정과 행동 의도**까지 분석
+- **연관 인물 리스크**를 브랜드와 함께 모니터링
+- AI가 **대응 전략 초안**까지 자동 생성
 
 ---
 
-## Developer
 
-Watch.i
+---
 
-Computer Science
+## 👩‍💻 Developer
 
-20220008 김소현
+<div align="center">
+
+**Watch.i | Computer Science**
+
+`20220008 김소현`
+
+</div>
