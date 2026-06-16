@@ -71,7 +71,8 @@ Naver          YouTube         Instagram
 
 ## 🧠 AI 분석 파이프라인
 
-```데이터 수집
+```
+데이터 수집
     │
     ▼
 KoBERT 감성 분석
