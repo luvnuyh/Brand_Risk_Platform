@@ -12,3 +12,4 @@ passlib
 jose
 openai 
 transformers
+apify_client
