@@ -3,8 +3,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 # 🔥 네 MySQL 정보로 바꿔줘
-DATABASE_URL = "mysql+pymysql://root:apple@localhost/brand_risk_db"
-
+DATABASE_URL = "mysql://root:FqUawlHkLETEVFdFPQbDRtJICEiZqocZ@mysql.railway.internal:3306/railway"
 engine = create_engine(
     DATABASE_URL,
     echo=True  # SQL 로그 확인용 (나중에 False로)
