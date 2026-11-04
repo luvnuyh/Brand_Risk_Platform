@@ -1,4 +1,4 @@
-const API_BASE = "https://https://housing-excluded-blue-highlights.trycloudflare.com.trycloudflare.com";
+const API_BASE = "https://housing-excluded-blue-highlights.trycloudflare.com";
 
 // =====================================================
 // 🔹 Token

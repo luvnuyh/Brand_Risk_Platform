@@ -992,7 +992,7 @@ function InviteModal({ onClose }) {
     if (!email.trim()) return;
     setLoading(true); setError("");
     try {
-      const res  = await fetch("https://https://housing-excluded-blue-highlights.trycloudflare.com.trycloudflare.com/invite", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("token")}` }, body: JSON.stringify({ email }) });
+      const res  = await fetch("https://housing-excluded-blue-highlights.trycloudflare.com/invite", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${localStorage.getItem("token")}` }, body: JSON.stringify({ email }) });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "오류가 발생했습니다");
       setSent(true);
