@@ -11,6 +11,7 @@ function getToken() {
 // 🔹 Analyze Brand
 // =====================================================
 export async function analyzeBrand() {
+  // 1. 분석 작업 시작
   const res = await fetch(`${API_BASE}/analyze`, {
     method: "POST",
     headers: {
@@ -21,11 +22,59 @@ export async function analyzeBrand() {
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || "분석 실패");
+    throw new Error(err.detail || "분석 시작 실패");
   }
 
-  return res.json();
+  const { task_id } = await res.json();
+
+  if (!task_id) {
+    throw new Error("분석 작업 ID를 받지 못했습니다.");
+  }
+
+  console.log("[분석 작업 시작]", task_id);
+
+  // 2. 분석 완료까지 상태 확인
+  const maxAttempts = 300; // 최대 15분
+  const interval = 3000;  // 3초 간격
+
+  for (let i = 0; i < maxAttempts; i++) {
+    await new Promise((resolve) => setTimeout(resolve, interval));
+
+    const statusRes = await fetch(
+      `${API_BASE}/analyze/status/${task_id}`,
+      {
+        headers: {
+          Authorization: `Bearer ${getToken()}`,
+        },
+      }
+    );
+
+    if (!statusRes.ok) {
+      throw new Error("분석 상태 확인 실패");
+    }
+
+    const statusData = await statusRes.json();
+
+    console.log("[분석 진행 상태]", statusData.status);
+
+    // 3. 분석 완료
+    if (statusData.status === "completed") {
+      if (!statusData.result) {
+        throw new Error("분석 결과가 없습니다.");
+      }
+
+      return statusData.result;
+    }
+
+    // 4. 분석 실패
+    if (statusData.status === "failed") {
+      throw new Error(statusData.error || "AI 분석 실패");
+    }
+  }
+
+  throw new Error("분석 시간이 초과되었습니다. 다시 시도해 주세요.");
 }
+
 
 // =====================================================
 // 🔹 Get Persons
