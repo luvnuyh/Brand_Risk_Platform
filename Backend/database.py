@@ -1,7 +1,11 @@
-import os
+from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+
+load_dotenv()
+
+import os
 
 # 🔥 네 MySQL 정보로 바꿔줘
 DATABASE_URL = os.getenv("MYSQL_PUBLIC_URL")

@@ -1,4 +1,4 @@
-const API_BASE = "http://localhost:8000";
+const API_BASE = "https://rivers-toward-connection-airplane.trycloudflare.com";
 
 export async function signup(data) {
   const res = await fetch(`${API_BASE}/signup`, {
