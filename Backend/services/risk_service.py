@@ -266,11 +266,11 @@ class RiskAnalyzer:
     # ==========================================
 
     def get_risk_level(self, score):
-        if score < 15:
+        if score < 40:
             return "low"
-        elif score < 35:
+        elif score < 50:
             return "moderate"
-        elif score < 60:
+        elif score < 80:
             return "high"
         else:
             return "critical"

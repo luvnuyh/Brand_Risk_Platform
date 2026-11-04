@@ -75,35 +75,156 @@ export default function DemoResult() {
   const brand     = state?.brand ?? "Sample Brand";
 
   // 데모 고정값
-  const riskScore    = 47;
-  const riskLevel    = "moderate";
-  const rm           = RISK_META[riskLevel];
-  const sentiment    = { positive: 11, neutral: 49, negative: 40 };
-  const totalComment = 1257;
-  const topChannel   = "YouTube";
+
+  // 브랜드명에 따라 서로 다른 데모 데이터 생성
+  const seed = [...brand].reduce(
+    (acc, char) => (acc * 31 + char.charCodeAt(0)) >>> 0,
+    7
+  );
+
+  const random = (min, max, offset = 0) => {
+    const x = Math.sin(seed + offset * 127.1) * 10000;
+    return Math.floor((x - Math.floor(x)) * (max - min + 1)) + min;
+  };
+
+  const riskScore = random(25, 85, 1);
+
+  const riskLevel =
+    riskScore >= 70 ? "critical" :
+    riskScore >= 55 ? "high" :
+    riskScore >= 35 ? "moderate" : "low";
+
+  const rm = RISK_META[riskLevel];
+
+  const negative = random(20, 65, 2);
+  const positive = random(10, 40, 3);
+  const neutral = 100 - negative - positive;
+
+  const sentiment = { positive, neutral, negative };
+
+  const totalComment = random(650, 2400, 4);
+
+  const sources = [
+    {
+      name: "YouTube",
+      icon: "▶",
+      score: random(20, 90, 5),
+      positive: random(10, 65, 6),
+      negative: random(15, 75, 7),
+    },
+    {
+      name: "Naver",
+      icon: "📰",
+      score: random(15, 85, 8),
+      positive: random(15, 70, 9),
+      negative: random(10, 65, 10),
+    },
+    {
+      name: "Instagram",
+      icon: "📸",
+      score: random(10, 80, 11),
+      positive: random(15, 80, 12),
+      negative: random(5, 65, 13),
+    },
+  ].map((source) => ({
+    ...source,
+    level:
+      source.score >= 70 ? "critical" :
+      source.score >= 55 ? "high" :
+      source.score >= 35 ? "moderate" : "low",
+  }));
+
+  const topChannel = [...sources].sort((a, b) => b.score - a.score)[0].name;
 
   const pieData = [
     { name: "긍정", value: sentiment.positive, color: T.green },
-    { name: "중립", value: sentiment.neutral,  color: "#e2e8f0" },
+    { name: "중립", value: sentiment.neutral, color: "#e2e8f0" },
     { name: "부정", value: sentiment.negative, color: T.red },
   ];
 
-  const sources = [
-    { name: "YouTube",   icon: "▶", score: 58, level: "high",     positive: 10, negative: 55 },
-    { name: "Naver",     icon: "📰", score: 19, level: "moderate", positive: 22, negative: 30 },
-    { name: "Instagram", icon: "📸", score: 0,  level: "low",      positive: 80, negative: 5  },
+  const issueOptions = [
+    ["제품 품질 논란", "제품의 품질 및 성능 관련 불만"],
+    ["고객 서비스", "고객 응대 및 서비스 경험 관련 불만"],
+    ["가격 정책", "가격 및 가성비에 대한 소비자 의견"],
+    ["기업 윤리", "기업 운영 및 사회적 책임 관련 이슈"],
+    ["허위·과장 광고", "광고 내용과 실제 경험 간 괴리"],
   ];
 
+  const issue1 = issueOptions[random(0, 4, 14)];
+  const issue2 = issueOptions[(random(0, 4, 15) + 1) % 5];
+
   const issues = [
-    { label: "윤리 논란",  pct: 50, color: T.red,    icon: "⚖️", desc: "기업 윤리·사회적 책임 이슈" },
-    { label: "허위 광고",  pct: 50, color: T.orange, icon: "📢", desc: "광고와 실제 경험 간 괴리" },
+    {
+      label: issue1[0],
+      pct: random(25, 65, 16),
+      color: T.red,
+      icon: "⚖️",
+      desc: issue1[1],
+    },
+    {
+      label: issue2[0],
+      pct: random(20, 55, 17),
+      color: T.orange,
+      icon: "📢",
+      desc: issue2[1],
+    },
   ];
 
   const actions = [
-    { label: "구매 비추천", pct: 38, color: T.red,    icon: "🚫", desc: "타 소비자에게 비구매 권고" },
-    { label: "불매 운동",   pct: 25, color: "#dc2626", icon: "✊", desc: "불매 의사 표명 증가" },
-    { label: "SNS 조롱",    pct: 25, color: T.orange, icon: "😂", desc: "밈·조롱성 콘텐츠 확산" },
+    {
+      label: "구매 비추천",
+      pct: random(15, 55, 18),
+      color: T.red,
+      icon: "🚫",
+      desc: "타 소비자에게 비구매 권고",
+    },
+    {
+      label: "불매 의사",
+      pct: random(5, 40, 19),
+      color: "#dc2626",
+      icon: "✊",
+      desc: "불매 의사 및 구매 중단 표현",
+    },
+    {
+      label: "SNS 부정 반응",
+      pct: random(10, 50, 20),
+      color: T.orange,
+      icon: "😂",
+      desc: "온라인상 부정적 의견 확산",
+    },
   ];
+
+  const emotionOptions = [
+    { label: "제품 만족", type: "positive", color: "#22c55e" },
+    { label: "재구매 의향", type: "positive", color: "#16a34a" },
+    { label: "추천 의향", type: "positive", color: "#4ade80" },
+    { label: "브랜드 신뢰", type: "positive", color: "#0d9488" },
+  
+    { label: "관망·지켜보기", type: "neutral", color: "#94a3b8" },
+    { label: "정보 탐색", type: "neutral", color: "#64748b" },
+    { label: "가격 고민", type: "neutral", color: "#a1a1aa" },
+  
+    { label: "제품 불만", type: "negative", color: "#f87171" },
+    { label: "실망·후회", type: "negative", color: "#ef4444" },
+    { label: "분노·항의", type: "negative", color: "#dc2626" },
+  ];
+  
+  const rawEmotionValues = emotionOptions.map((_, i) =>
+    random(5, 25, 30 + i)
+  );
+  
+  const rawEmotionTotal = rawEmotionValues.reduce((a, b) => a + b, 0);
+  
+  const consumerEmotions = emotionOptions.map((emotion, i) => ({
+    ...emotion,
+    pct: i === emotionOptions.length - 1
+      ? 100 - emotionOptions
+          .slice(0, -1)
+          .reduce((sum, item, j) =>
+            sum + Math.round(rawEmotionValues[j] / rawEmotionTotal * 100), 0)
+      : Math.round(rawEmotionValues[i] / rawEmotionTotal * 100),
+  }));
+
 
   return (
     <div
@@ -326,24 +447,22 @@ export default function DemoResult() {
                 </div>
               </div>
 
-              {/* 요약 문장 */}
-              <div style={{ background: "rgba(239,68,68,0.04)", border: "1px solid rgba(239,68,68,0.12)", borderRadius: 12, padding: "12px 16px", marginBottom: 16 }}>
-                <p style={{ color: T.text, fontSize: 12, fontWeight: 600, lineHeight: 1.7, margin: 0 }}>
-                  부정적 감정 반응이 증가하고 있습니다. 기업 윤리 관련 논란이 언급되고 있습니다. 구매를 만류하는 반응이 증가하고 있습니다.{" "}
-                  현재 브랜드는 <span style={{ color: rm.color, fontWeight: 800 }}>{rm.label} 단계</span>로 판단됩니다.
-                </p>
-              </div>
+          {/* 요약 문장 */}
+            <div style={{ background: "rgba(239,68,68,0.04)", border: "1px solid rgba(239,68,68,0.12)", borderRadius: 12, padding: "12px 16px", marginBottom: 16 }}>
+              <p style={{ color: T.text, fontSize: 12, fontWeight: 600, lineHeight: 1.7, margin: 0 }}>
+                {brand} 관련 데모 분석 결과, {issues[0].label} 및 {issues[1].label}가 주요 이슈로 나타났습니다.
+                소비자 반응 중 부정 감정은 {sentiment.negative}%를 차지하며,
+                주요 소비자 행동은 {actions[0].label}으로 설정되었습니다.{" "}
+                현재 브랜드는 <span style={{ color: rm.color, fontWeight: 800 }}>{rm.label} 단계</span>로 표시됩니다.
+              </p>
+            </div>
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 0, borderTop: `1px solid ${T.border}` }}>
               {/* 소비자 감정 */}
               <div style={{ padding: "16px 20px", borderRight: `1px solid ${T.border}` }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: T.textSub, marginBottom: 12 }}>😤 소비자 감정</div>
-                {[
-                  { label: "부정적", pct: 50, color: T.red },
-                  { label: "걱정·우려", pct: 30, color: "#f59e0b" },
-                  { label: "강한 분노", pct: 20, color: "#dc2626" },
-                ].map(({ label, pct, color }) => (
+                {consumerEmotions.map(({ label, pct, color }) => (
                   <div key={label} style={{ marginBottom: 8 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
                       <span style={{ color: T.textSub, fontSize: 10 }}>{label}</span>

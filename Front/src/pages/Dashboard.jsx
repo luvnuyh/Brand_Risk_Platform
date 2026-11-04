@@ -17,6 +17,7 @@ import Navbar from "../components/Navbar.jsx";
 import {
   CommentStreamWidget, RiskGaugeWidget, StrategyWidget, ReportWidget,
 } from "../pages/Features";
+import { Store } from "lucide-react";
 
 // ─── 캐시 유틸 ────────────────────────────────────────────────
 const CACHE_TTL = 30 * 60 * 1000;
@@ -55,6 +56,9 @@ const T = {
   textSub:    "#64748b",
   textMuted:  "#94a3b8",
 };
+
+// 두 카드(부정 콘텐츠 TOP 10 / 댓글 감성 분석)가 공유하는 고정 높이
+const ROW_CARD_HEIGHT = 640;
 
 // ─── 리스크 메타 ──────────────────────────────────────────────
 const RISK_META = {
@@ -206,15 +210,29 @@ function BrandAvatar({ riskColor, riskGlow, score }) {
           backdropFilter: "blur(20px)",
         }}
       >
-        <img
-          src="https://img.icons8.com/color/480/starbucks.png"
-          alt="Starbucks"
-          style={{
-            width: "68%",
-            height: "68%",
-            objectFit: "contain",
-          }}
-        />
+        <div
+  style={{
+    width: "68%",
+    height: "68%",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    color: "#64748b",
+  }}
+>
+<div
+  style={{
+    width: "68%",
+    height: "68%",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    color: "#475569",
+  }}
+>
+  <Store size={48} strokeWidth={1.6} />
+</div>
+</div>
       </div>
 
       {/* Risk Badge */}
@@ -627,8 +645,8 @@ function CommentSentimentCard({ analyzedComments }) {
   ];
 
   return (
-    <Card>
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20 }}>
+    <Card style={{ display: "flex", flexDirection: "column", height: ROW_CARD_HEIGHT }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 20, flexShrink: 0 }}>
         <div>
           <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.16em", color: T.textMuted, textTransform: "uppercase", marginBottom: 5 }}>Comment Analysis</div>
           <h3 style={{ color: T.text, fontSize: 17, fontWeight: 800, letterSpacing: "-0.04em", margin: 0 }}>댓글 감성 분석</h3>
@@ -648,17 +666,18 @@ function CommentSentimentCard({ analyzedComments }) {
         </div>
       </div>
 
-      <div style={{ height: 7, borderRadius: 999, overflow: "hidden", display: "flex", gap: 2, marginBottom: 18, background: "rgba(0,0,0,0.04)" }}>
+      <div style={{ height: 7, borderRadius: 999, overflow: "hidden", display: "flex", gap: 2, marginBottom: 18, background: "rgba(0,0,0,0.04)", flexShrink: 0 }}>
         {[{ key:"positive", color:"#10b981" }, { key:"neutral", color:"#cbd5e1" }, { key:"negative", color:"#ef4444" }].map(({ key, color }) => (
           <motion.div key={key} initial={{ width: 0 }} animate={{ width: `${(counts[key] / total) * 100}%` }} transition={{ duration: 1, ease: [0.22, 1, 0.36, 1], delay: 0.1 }} style={{ height: "100%", background: color, borderRadius: 999 }} />
         ))}
       </div>
 
-      <div style={{ marginBottom: 16 }}>
+      <div style={{ marginBottom: 16, flexShrink: 0 }}>
         <SegmentControl options={filterOptions} value={filter} onChange={setFilter} size="sm" />
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 420, overflowY: "auto", paddingRight: 2 }}>
+      {/* 남는 공간을 전부 채우고, 넘치면 이 안에서 스크롤 */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, flex: 1, minHeight: 0, overflowY: "auto", paddingRight: 2 }}>
         <AnimatePresence mode="popLayout">
           {filtered.map((c, idx) => {
             const sm = SENTIMENT_CHIP_META[c.sentiment ?? "neutral"] ?? SENTIMENT_CHIP_META.neutral;
@@ -668,7 +687,7 @@ function CommentSentimentCard({ analyzedComments }) {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.97 }}
                 transition={{ duration: 0.18, delay: idx * 0.02 }}
-                style={{ border: `1px solid ${sm.border}`, borderLeft: `3px solid ${sm.color}`, borderRadius: 14, padding: "13px 15px", background: sm.bg }}
+                style={{ flexShrink: 0, border: `1px solid ${sm.border}`, borderLeft: `3px solid ${sm.color}`, borderRadius: 14, padding: "13px 15px", background: sm.bg }}
               >
                 <div style={{ fontSize: 13, color: T.text, marginBottom: 9, lineHeight: 1.6, fontWeight: 500 }}>{c.text}</div>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 5, alignItems: "center" }}>
@@ -781,40 +800,97 @@ function AiReportCard({ report, loading }) {
 }
 
 // ─── Situation Brief ──────────────────────────────────────────
+// ─── Situation Brief 메타 (세분화 버전) ───────────────────────
+// tone: "negative" | "positive" | "neutral"  (나중에 그룹별 정렬/필터용)
+// ※ 기존 키는 모두 유지했고, 새 키만 추가했습니다.
+// ※ 데이터가 없는 브랜드는 buildCards가 "위에서부터" 0%로 채우므로,
+//    각 블록 맨 앞 3개가 기본 표시 항목입니다.
+
+// ══════════════ 감정 (EMOTION) ══════════════
 const EMOTION_META = {
-  concerned:    { label:"걱정·우려",  color:"#f59e0b", bg:"rgba(245,158,11,0.08)",  icon:"😟", sentence:"현재 소비자 반응은 걱정과 불신 중심으로 형성되고 있습니다." },
-  dissatisfied: { label:"불만족",     color:"#f97316", bg:"rgba(249,115,22,0.08)",  icon:"😤", sentence:"기대 대비 만족도가 낮다는 반응이 증가하고 있습니다." },
-  sarcastic:    { label:"냉소·조롱",  color:"#ef4444", bg:"rgba(239,68,68,0.08)",   icon:"😒", sentence:"브랜드에 대한 냉소적 반응이 확산되고 있습니다." },
-  rage:         { label:"강한 분노",  color:"#dc2626", bg:"rgba(220,38,38,0.08)",   icon:"😡", sentence:"격한 분노 반응이 빠르게 증가하고 있습니다." },
-  satisfied:    { label:"만족",       color:"#10b981", bg:"rgba(16,185,129,0.08)",  icon:"😊", sentence:"브랜드 만족도가 긍정적으로 유지되고 있습니다." },
-  supportive:   { label:"브랜드 지지",color:"#22c55e", bg:"rgba(34,197,94,0.08)",   icon:"💚", sentence:"브랜드를 옹호하는 반응이 확인됩니다." },
-  excited:      { label:"기대감",     color:"#06b6d4", bg:"rgba(6,182,212,0.08)",   icon:"✨", sentence:"신제품 및 향후 행보에 대한 기대감이 형성되고 있습니다." },
-  anticipating: { label:"관심 집중",  color:"#3b82f6", bg:"rgba(59,130,246,0.08)",  icon:"👀", sentence:"브랜드 관련 이슈에 관심이 집중되고 있습니다." },
-  positive:     { label:"긍정적",     color:"#10b981", bg:"rgba(16,185,129,0.08)",  icon:"👍", sentence:"전반적으로 긍정적 반응이 유지되고 있습니다." },
-  negative:     { label:"부정적",     color:"#ef4444", bg:"rgba(239,68,68,0.08)",   icon:"👎", sentence:"부정적 감정 반응이 증가하고 있습니다." },
+  // ── 부정
+  concerned:    { tone:"negative", label:"걱정·우려",   color:"#f59e0b", bg:"rgba(245,158,11,0.08)",  icon:"😟", sentence:"현재 소비자 반응은 걱정과 불신 중심으로 형성되고 있습니다." },
+  dissatisfied: { tone:"negative", label:"불만족",      color:"#f97316", bg:"rgba(249,115,22,0.08)",  icon:"😤", sentence:"기대 대비 만족도가 낮다는 반응이 증가하고 있습니다." },
+  disappointed: { tone:"negative", label:"실망",        color:"#fb923c", bg:"rgba(251,146,60,0.08)",  icon:"😞", sentence:"기대에 못 미친다는 실망 반응이 나타나고 있습니다." },
+  annoyed:      { tone:"negative", label:"짜증·답답",   color:"#f97316", bg:"rgba(249,115,22,0.08)",  icon:"😣", sentence:"불편과 답답함을 호소하는 반응이 감지됩니다." },
+  distrustful:  { tone:"negative", label:"불신",        color:"#a855f7", bg:"rgba(168,85,247,0.08)",  icon:"🤨", sentence:"브랜드를 믿기 어렵다는 반응이 늘고 있습니다." },
+  sarcastic:    { tone:"negative", label:"냉소·조롱",   color:"#ef4444", bg:"rgba(239,68,68,0.08)",   icon:"😒", sentence:"브랜드에 대한 냉소적 반응이 확산되고 있습니다." },
+  rage:         { tone:"negative", label:"강한 분노",   color:"#dc2626", bg:"rgba(220,38,38,0.08)",   icon:"😡", sentence:"격한 분노 반응이 빠르게 증가하고 있습니다." },
+  negative:     { tone:"negative", label:"부정적",      color:"#ef4444", bg:"rgba(239,68,68,0.08)",   icon:"👎", sentence:"부정적 감정 반응이 증가하고 있습니다." },
+
+  // ── 긍정
+  satisfied:    { tone:"positive", label:"만족",        color:"#10b981", bg:"rgba(16,185,129,0.08)",  icon:"😊", sentence:"브랜드 만족도가 긍정적으로 유지되고 있습니다." },
+  impressed:    { tone:"positive", label:"감탄·호평",   color:"#14b8a6", bg:"rgba(20,184,166,0.08)",  icon:"🤩", sentence:"제품과 경험에 대한 호평이 확인됩니다." },
+  grateful:     { tone:"positive", label:"감사",        color:"#34d399", bg:"rgba(52,211,153,0.08)",  icon:"🙏", sentence:"브랜드에 대한 고마움을 표현하는 반응이 나타납니다." },
+  supportive:   { tone:"positive", label:"브랜드 지지", color:"#22c55e", bg:"rgba(34,197,94,0.08)",   icon:"💚", sentence:"브랜드를 옹호하는 반응이 확인됩니다." },
+  excited:      { tone:"positive", label:"기대감",      color:"#06b6d4", bg:"rgba(6,182,212,0.08)",   icon:"✨", sentence:"신제품 및 향후 행보에 대한 기대감이 형성되고 있습니다." },
+  affectionate: { tone:"positive", label:"애정·선호",   color:"#ec4899", bg:"rgba(236,72,153,0.08)",  icon:"🥰", sentence:"브랜드에 대한 애정과 선호가 드러나고 있습니다." },
+  positive:     { tone:"positive", label:"긍정적",      color:"#10b981", bg:"rgba(16,185,129,0.08)",  icon:"👍", sentence:"전반적으로 긍정적 반응이 유지되고 있습니다." },
+
+  // ── 중립
+  anticipating: { tone:"neutral",  label:"관심 집중",   color:"#3b82f6", bg:"rgba(59,130,246,0.08)",  icon:"👀", sentence:"브랜드 관련 이슈에 관심이 집중되고 있습니다." },
+  curious:      { tone:"neutral",  label:"궁금·문의",   color:"#6366f1", bg:"rgba(99,102,241,0.08)",  icon:"🤔", sentence:"제품과 이슈에 대한 궁금증과 문의가 나타납니다." },
+  indifferent:  { tone:"neutral",  label:"무관심",      color:"#94a3b8", bg:"rgba(148,163,184,0.08)", icon:"😐", sentence:"뚜렷한 감정 없이 담담한 반응이 대부분입니다." },
 };
 
+// ══════════════ 핵심 이슈 (ISSUE) ══════════════
 const ISSUE_META = {
-  quality_issue:    { label:"품질 문제",        icon:"📦", color:"#ef4444", desc:"제품·서비스 품질 관련 불만",       sentence:"제품 품질에 대한 부정 반응이 증가하고 있습니다." },
-  pricing_issue:    { label:"가격 문제",        icon:"💰", color:"#f97316", desc:"가격 대비 가치에 대한 이슈",       sentence:"가격 정책에 대한 소비자 불만이 감지됩니다." },
-  service_issue:    { label:"서비스 문제",      icon:"🎧", color:"#f59e0b", desc:"고객 응대 관련 불만",             sentence:"고객 경험과 서비스 만족도가 하락하고 있습니다." },
-  trust_issue:      { label:"신뢰도 하락",      icon:"🔒", color:"#7c3aed", desc:"브랜드 신뢰성 저하",             sentence:"브랜드 신뢰도에 대한 우려가 커지고 있습니다." },
-  ethical_issue:    { label:"윤리 논란",        icon:"⚖️", color:"#dc2626", desc:"기업 윤리·사회적 책임 이슈",     sentence:"기업 윤리 관련 논란이 언급되고 있습니다." },
-  false_advertising:{ label:"허위 광고",        icon:"📢", color:"#ec4899", desc:"광고와 실제 경험 간 괴리",       sentence:"광고 신뢰성에 대한 의문이 제기되고 있습니다." },
-  creator_issue:    { label:"모델·인플루언서",  icon:"🎭", color:"#8b5cf6", desc:"연관 인물 리스크",               sentence:"연관 인물 관련 부정 여론이 감지됩니다." },
+  // ── 품질·제품
+  quality_issue:    { tone:"negative", label:"품질 문제",       icon:"📦", color:"#ef4444", desc:"제품·서비스 품질 관련 불만",       sentence:"제품 품질에 대한 부정 반응이 증가하고 있습니다." },
+  durability_issue: { tone:"negative", label:"내구성·불량",     icon:"🧵", color:"#dc2626", desc:"쉽게 망가지거나 불량이라는 불만",   sentence:"내구성과 불량에 대한 불만이 감지됩니다." },
+  design_issue:     { tone:"negative", label:"디자인 불만",     icon:"🎨", color:"#f472b6", desc:"디자인·스타일에 대한 아쉬움",       sentence:"디자인에 대한 아쉬움이 언급되고 있습니다." },
+  sizing_issue:     { tone:"negative", label:"사이즈·핏",       icon:"📏", color:"#fb7185", desc:"사이즈 불일치, 핏 관련 불만",       sentence:"사이즈와 핏 관련 불만이 감지됩니다." },
+  safety_issue:     { tone:"negative", label:"위생·안전",       icon:"🧪", color:"#b91c1c", desc:"위생·안전·유해성 우려",             sentence:"위생과 안전에 대한 우려가 제기되고 있습니다." },
+
+  // ── 가격
+  pricing_issue:    { tone:"negative", label:"가격 문제",       icon:"💰", color:"#f97316", desc:"가격 대비 가치에 대한 이슈",       sentence:"가격 정책에 대한 소비자 불만이 감지됩니다." },
+  value_issue:      { tone:"negative", label:"가성비 불만",     icon:"🏷️", color:"#fb923c", desc:"가격에 비해 아쉽다는 반응",         sentence:"가격 대비 만족도가 낮다는 반응이 있습니다." },
+
+  // ── 서비스·운영
+  service_issue:    { tone:"negative", label:"서비스 문제",     icon:"🎧", color:"#f59e0b", desc:"고객 응대 관련 불만",             sentence:"고객 경험과 서비스 만족도가 하락하고 있습니다." },
+  delivery_issue:   { tone:"negative", label:"배송·재고",       icon:"🚚", color:"#eab308", desc:"배송 지연, 품절, 재고 불만",        sentence:"배송과 재고 관련 불만이 언급되고 있습니다." },
+  return_issue:     { tone:"negative", label:"교환·환불 정책",  icon:"↩️", color:"#d97706", desc:"교환·반품·환불 처리 불만",          sentence:"교환·환불 처리에 대한 불만이 감지됩니다." },
+
+  // ── 신뢰·윤리
+  trust_issue:      { tone:"negative", label:"신뢰도 하락",     icon:"🔒", color:"#7c3aed", desc:"브랜드 신뢰성 저하",             sentence:"브랜드 신뢰도에 대한 우려가 커지고 있습니다." },
+  ethical_issue:    { tone:"negative", label:"윤리 논란",       icon:"⚖️", color:"#dc2626", desc:"기업 윤리·사회적 책임 이슈",     sentence:"기업 윤리 관련 논란이 언급되고 있습니다." },
+  false_advertising:{ tone:"negative", label:"허위 광고",       icon:"📢", color:"#ec4899", desc:"광고와 실제 경험 간 괴리",       sentence:"광고 신뢰성에 대한 의문이 제기되고 있습니다." },
+  labor_issue:      { tone:"negative", label:"노동·갑질",       icon:"🏢", color:"#9333ea", desc:"노동 환경·갑질 관련 논란",          sentence:"노동 환경과 갑질 관련 논란이 언급되고 있습니다." },
+  plagiarism_issue: { tone:"negative", label:"표절·카피",       icon:"📑", color:"#a21caf", desc:"디자인 도용·카피 의혹",             sentence:"표절·카피 의혹이 제기되고 있습니다." },
+  environment_issue:{ tone:"negative", label:"환경 이슈",       icon:"🌍", color:"#65a30d", desc:"환경·친환경 관련 지적",             sentence:"환경 관련 지적이 언급되고 있습니다." },
+  creator_issue:    { tone:"negative", label:"모델·인플루언서", icon:"🎭", color:"#8b5cf6", desc:"연관 인물 리스크",               sentence:"연관 인물 관련 부정 여론이 감지됩니다." },
+
+  // ── 긍정 이슈 (부정 댓글이 적은 브랜드에서 의미 있는 항목)
+  quality_praise:   { tone:"positive", label:"품질 호평",       icon:"🏅", color:"#10b981", desc:"품질·마감에 대한 칭찬",             sentence:"제품 품질에 대한 호평이 확인됩니다." },
+  design_praise:    { tone:"positive", label:"디자인 호평",     icon:"💎", color:"#14b8a6", desc:"디자인·스타일에 대한 칭찬",         sentence:"디자인에 대한 호평이 나타납니다." },
+  value_praise:     { tone:"positive", label:"가성비 호평",     icon:"👛", color:"#22c55e", desc:"가격 대비 만족",                    sentence:"가성비에 대한 긍정 반응이 확인됩니다." },
+  service_praise:   { tone:"positive", label:"서비스 호평",     icon:"🌟", color:"#06b6d4", desc:"응대·서비스에 대한 칭찬",           sentence:"서비스에 대한 긍정 반응이 나타납니다." },
 };
 
+// ══════════════ 소비자 행동 (ACTION) ══════════════
 const ACTION_META = {
-  warning_others: { label:"구매 비추천", icon:"🚫", color:"#ef4444", desc:"타 소비자에게 비구매 권고",   sentence:"구매를 만류하는 반응이 증가하고 있습니다." },
-  boycott:        { label:"불매 운동",   icon:"✊", color:"#dc2626", desc:"불매 의사 표명 증가",         sentence:"불매 움직임이 일부 커뮤니티에서 감지됩니다." },
-  complaint:      { label:"공식 항의",   icon:"📣", color:"#f97316", desc:"고객센터·공식채널 문의 증가", sentence:"공식 항의 및 문의가 증가하고 있습니다." },
-  refund_request: { label:"환불 요구",   icon:"💸", color:"#ef4444", desc:"환불 및 보상 요구 증가",     sentence:"환불을 요구하는 소비자 반응이 감지됩니다." },
-  brand_switch:   { label:"경쟁사 이동", icon:"🔄", color:"#f59e0b", desc:"대체 브랜드 언급 증가",     sentence:"경쟁 브랜드로 이동하려는 움직임이 나타납니다." },
-  mocking:        { label:"SNS 조롱",    icon:"😂", color:"#f59e0b", desc:"밈·조롱성 콘텐츠 확산",     sentence:"SNS를 중심으로 조롱성 반응이 확산되고 있습니다." },
-  purchase_intent:{ label:"구매 의향",   icon:"🛒", color:"#10b981", desc:"구매 계획 언급",             sentence:"구매 의향을 나타내는 긍정 반응이 증가하고 있습니다." },
-  recommendation: { label:"추천 의향",   icon:"💬", color:"#10b981", desc:"타인 추천 의사",             sentence:"주변 지인에게 추천하려는 반응이 나타납니다." },
-  fandom:         { label:"팬덤 지지",   icon:"💖", color:"#22c55e", desc:"브랜드 옹호 및 지지",       sentence:"충성 고객층의 지지가 유지되고 있습니다." },
-  creator_support:{ label:"모델 옹호",   icon:"🤝", color:"#06b6d4", desc:"연관 인물 지지",             sentence:"연관 인물을 옹호하는 반응이 나타나고 있습니다." },
+  // ── 부정 행동
+  warning_others: { tone:"negative", label:"구매 비추천",   icon:"🚫", color:"#ef4444", desc:"타 소비자에게 비구매 권고",   sentence:"구매를 만류하는 반응이 증가하고 있습니다." },
+  boycott:        { tone:"negative", label:"불매 운동",     icon:"✊", color:"#dc2626", desc:"불매 의사 표명 증가",         sentence:"불매 움직임이 일부 커뮤니티에서 감지됩니다." },
+  complaint:      { tone:"negative", label:"공식 항의",     icon:"📣", color:"#f97316", desc:"고객센터·공식채널 문의 증가", sentence:"공식 항의 및 문의가 증가하고 있습니다." },
+  refund_request: { tone:"negative", label:"환불 요구",     icon:"💸", color:"#ef4444", desc:"환불 및 보상 요구 증가",     sentence:"환불을 요구하는 소비자 반응이 감지됩니다." },
+  brand_switch:   { tone:"negative", label:"경쟁사 이동",   icon:"🔄", color:"#f59e0b", desc:"대체 브랜드 언급 증가",     sentence:"경쟁 브랜드로 이동하려는 움직임이 나타납니다." },
+  mocking:        { tone:"negative", label:"SNS 조롱",      icon:"😂", color:"#f59e0b", desc:"밈·조롱성 콘텐츠 확산",     sentence:"SNS를 중심으로 조롱성 반응이 확산되고 있습니다." },
+  report_authority:{tone:"negative", label:"신고·민원",     icon:"🚨", color:"#b91c1c", desc:"소비자원·관계기관 신고 언급", sentence:"신고·민원 제기 움직임이 감지됩니다." },
+  viral_complaint:{ tone:"negative", label:"부정 후기 확산", icon:"📱", color:"#e11d48", desc:"부정 경험의 SNS 공유",        sentence:"부정 경험이 SNS를 통해 공유되고 있습니다." },
+
+  // ── 긍정 행동
+  purchase_intent:{ tone:"positive", label:"구매 의향",     icon:"🛒", color:"#10b981", desc:"구매 계획 언급",             sentence:"구매 의향을 나타내는 긍정 반응이 증가하고 있습니다." },
+  repurchase:     { tone:"positive", label:"재구매",        icon:"🔁", color:"#14b8a6", desc:"다시 구매했거나 구매 예정",   sentence:"재구매 의사를 밝히는 반응이 나타납니다." },
+  recommendation: { tone:"positive", label:"추천 의향",     icon:"💬", color:"#10b981", desc:"타인 추천 의사",             sentence:"주변 지인에게 추천하려는 반응이 나타납니다." },
+  review_sharing: { tone:"positive", label:"후기 공유",     icon:"📝", color:"#0ea5e9", desc:"착용·사용 후기 공유",         sentence:"자발적인 사용 후기 공유가 나타나고 있습니다." },
+  fandom:         { tone:"positive", label:"팬덤 지지",     icon:"💖", color:"#22c55e", desc:"브랜드 옹호 및 지지",       sentence:"충성 고객층의 지지가 유지되고 있습니다." },
+  creator_support:{ tone:"positive", label:"모델 옹호",     icon:"🤝", color:"#06b6d4", desc:"연관 인물 지지",             sentence:"연관 인물을 옹호하는 반응이 나타나고 있습니다." },
+
+  // ── 중립 행동
+  inquiry:        { tone:"neutral",  label:"문의·질문",     icon:"❓", color:"#6366f1", desc:"제품·매장·가격 문의",         sentence:"제품과 매장에 대한 문의가 이어지고 있습니다." },
+  wait_and_see:   { tone:"neutral",  label:"관망",          icon:"⏳", color:"#94a3b8", desc:"후기·반응을 지켜보는 중",     sentence:"반응을 지켜보며 관망하는 소비자가 있습니다." },
+  viral_share:    { tone:"neutral",  label:"콘텐츠 확산",   icon:"🔗", color:"#3b82f6", desc:"게시물·기사 공유 및 확산",    sentence:"관련 콘텐츠가 공유되며 확산되고 있습니다." },
 };
 
 function SituationBrief({ taxonomy, overview }) {
@@ -1039,7 +1115,138 @@ function InviteModal({ onClose }) {
     </motion.div>
   );
 }
+// ─── 분석 로딩 화면 (실제 분석 완료 시까지 대기) ─────────────
+const LOADING_STEPS = [
+  { icon: "🔍", label: "온라인 데이터 수집 중",   sub: "YouTube · 네이버 · Instagram",     startAt: 0     },
+  { icon: "🧠", label: "AI 감성 분석 중",         sub: "긍부정 / 핵심 이슈 / 반응 패턴",   startAt: 8000  },
+  { icon: "📊", label: "리스크 점수 계산 중",     sub: "채널별 위험도 종합",               startAt: 25000 },
+  { icon: "✨", label: "AI 브랜드 리포트 생성 중", sub: "대응 전략 및 인사이트 도출",       startAt: 40000 },
+];
 
+function AnalysisLoading({ brand }) {
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    const start = Date.now();
+    const id = setInterval(() => setElapsed(Date.now() - start), 100);
+    return () => clearInterval(id);
+  }, []);
+
+  // 마지막 단계에서 멈춰서 실제 분석이 끝날 때까지 대기
+  let currentStep = 0;
+  LOADING_STEPS.forEach((s, i) => { if (elapsed >= s.startAt) currentStep = i; });
+
+  // 95%까지 점점 느려지는 진행률 (완료 전에는 100%가 되지 않음)
+  const progress = Math.round(95 * (1 - Math.exp(-elapsed / 30000)));
+
+  const purple = "#7c3aed";
+  const green  = "#10b981";
+
+  return (
+    <div style={{ minHeight: "100vh", background: "linear-gradient(160deg,#f0f4ff 0%,#fafbff 55%,#f5f0ff 100%)", position: "relative", overflow: "hidden", fontFamily: "'Plus Jakarta Sans', sans-serif", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+      <div style={{ position: "fixed", inset: 0, pointerEvents: "none", opacity: 0.3, zIndex: 0, backgroundImage: "linear-gradient(rgba(37,99,235,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(37,99,235,.06) 1px,transparent 1px)", backgroundSize: "40px 40px" }} />
+      <div style={{ position: "fixed", top: "30%", left: "50%", transform: "translateX(-50%)", width: 600, height: 400, borderRadius: "50%", background: "radial-gradient(ellipse,rgba(37,99,235,0.1) 0%,transparent 70%)", pointerEvents: "none", zIndex: 0, filter: "blur(40px)" }} />
+
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+        style={{ width: "100%", maxWidth: 460, position: "relative", zIndex: 1 }}
+      >
+        {/* 로고 + 제목 */}
+        <div style={{ textAlign: "center", marginBottom: 36 }}>
+          <motion.div
+            animate={{ scale: [1, 1.06, 1] }}
+            transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
+            style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 56, height: 56, borderRadius: 16, background: `linear-gradient(135deg,${T.blue},${purple})`, boxShadow: "0 8px 28px rgba(37,99,235,0.35)", marginBottom: 16 }}
+          >
+            <span style={{ color: "#fff", fontSize: 22, fontWeight: 900 }}>R</span>
+          </motion.div>
+
+          <div style={{ color: T.text, fontSize: 18, fontWeight: 800, letterSpacing: "-0.03em" }}>
+            {brand ? (
+              <>
+                <span style={{ background: `linear-gradient(135deg,${T.blue},${purple})`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>{brand}</span>{" "}
+                분석 중
+              </>
+            ) : (
+              "브랜드 리스크 분석 중"
+            )}
+          </div>
+          <p style={{ color: T.textMuted, fontSize: 12, marginTop: 6 }}>분석에는 시간이 걸릴 수 있어요. 잠시만 기다려주세요</p>
+        </div>
+
+        {/* 카드 */}
+        <div style={{ borderRadius: 24, border: `1px solid ${T.border}`, background: "rgba(255,255,255,0.85)", backdropFilter: "blur(24px)", boxShadow: "0 20px 60px rgba(37,99,235,0.10)", overflow: "hidden" }}>
+          <div style={{ height: 3, background: `linear-gradient(90deg,${T.blue},${purple})` }} />
+
+          <div style={{ padding: "24px 24px 28px" }}>
+            {/* 진행 바 */}
+            <div style={{ marginBottom: 24 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <span style={{ color: T.textMuted, fontSize: 10, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>진행률</span>
+                <span style={{ color: T.blue, fontSize: 13, fontWeight: 800 }}>{progress}%</span>
+              </div>
+              <div style={{ height: 6, background: "rgba(0,0,0,0.06)", borderRadius: 999, overflow: "hidden" }}>
+                <motion.div
+                  animate={{ width: `${progress}%` }}
+                  transition={{ duration: 0.3 }}
+                  style={{ height: "100%", borderRadius: 999, background: `linear-gradient(90deg,${T.blue},${purple})`, boxShadow: "0 0 12px rgba(37,99,235,0.4)" }}
+                />
+              </div>
+            </div>
+
+            {/* 단계 리스트 */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {LOADING_STEPS.map((step, i) => {
+                const isActive = i === currentStep;
+                const isDone   = i < currentStep;
+                return (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, x: -8 }}
+                    animate={{ opacity: i <= currentStep ? 1 : 0.35, x: 0 }}
+                    transition={{ duration: 0.3, delay: i * 0.05 }}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", borderRadius: 14,
+                      background: isActive ? "rgba(37,99,235,0.06)" : isDone ? "rgba(16,185,129,0.04)" : "transparent",
+                      border: isActive ? `1px solid ${T.blueMid}` : isDone ? "1px solid rgba(16,185,129,0.15)" : "1px solid transparent",
+                      transition: "all 0.3s",
+                    }}
+                  >
+                    <div style={{
+                      width: 32, height: 32, borderRadius: 10, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14,
+                      background: isDone ? "rgba(16,185,129,0.1)" : isActive ? T.blueLight : "rgba(0,0,0,0.04)",
+                      border: isDone ? "1px solid rgba(16,185,129,0.2)" : isActive ? `1px solid ${T.blueMid}` : "1px solid transparent",
+                    }}>
+                      {isDone ? "✓" : step.icon}
+                    </div>
+
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, color: isDone ? green : isActive ? T.text : T.textMuted }}>{step.label}</div>
+                      <div style={{ fontSize: 10, color: T.textMuted, marginTop: 1 }}>{step.sub}</div>
+                    </div>
+
+                    {isActive && (
+                      <div style={{ display: "flex", gap: 3, flexShrink: 0 }}>
+                        {[0, 1, 2].map((j) => (
+                          <motion.div key={j} animate={{ opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1.0, delay: j * 0.2 }} style={{ width: 4, height: 4, borderRadius: "50%", background: T.blue }} />
+                        ))}
+                      </div>
+                    )}
+                    {isDone && <span style={{ color: green, fontSize: 10, fontWeight: 700, flexShrink: 0 }}>완료</span>}
+                  </motion.div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        <p style={{ textAlign: "center", color: T.textMuted, fontSize: 11, marginTop: 16 }}>분석이 끝나면 자동으로 대시보드가 표시됩니다</p>
+      </motion.div>
+    </div>
+  );
+}
 // ═══════════════════════════════════════════════════════════════
 //  메인 Dashboard
 // ═══════════════════════════════════════════════════════════════
@@ -1081,6 +1288,15 @@ export default function Dashboard() {
         analyzeBrand(),
         getPersons()
       ]);
+
+      console.log("COUNTS:", {
+        total_comments: apiResult.total_comments,
+        videos: apiResult.videos_analyzed,
+        articles: apiResult.articles_analyzed,
+      });
+      console.log("source_breakdown:", JSON.stringify(apiResult.source_breakdown, null, 2));
+      console.log("taxonomy_summary:", JSON.stringify(apiResult.taxonomy_summary, null, 2));
+
       const mapped = mapApiToDashboard(apiResult, personsResult);
       saveCache(mapped, mapped.overview.brand);
       setDashDataSync(mapped);
@@ -1177,21 +1393,7 @@ export default function Dashboard() {
   }, []);
 
   // ── 로딩 화면
-  if (loading) return (
-    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "linear-gradient(160deg,#f0f6ff 0%,#fafbff 50%,#f5f0ff 100%)", gap: 18, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-      <div style={{ position: "fixed", inset: 0, pointerEvents: "none", opacity: 0.4, backgroundImage: "linear-gradient(rgba(37,99,235,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(37,99,235,.06) 1px,transparent 1px)", backgroundSize: "40px 40px" }} />
-      <div style={{ width: 56, height: 56, borderRadius: 16, background: "linear-gradient(135deg,#2563eb,#7c3aed)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 8px 28px rgba(37,99,235,0.3)", animation: "float 2s ease-in-out infinite" }}>
-        <span style={{ color: "#fff", fontSize: 24, fontWeight: 800 }}>R</span>
-      </div>
-      <div style={{ textAlign: "center" }}>
-        <div style={{ color: T.text, fontSize: 16, fontWeight: 700 }}>브랜드 리스크 분석 중</div>
-        <div style={{ color: T.textSub, fontSize: 13, marginTop: 5 }}>YouTube · 네이버 뉴스 · Instagram</div>
-      </div>
-      <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
-        {[0,1,2].map(i => <div key={i} style={{ width: 6, height: 6, borderRadius: "50%", background: T.blue, animation: `blink 1.2s ease-in-out ${i*0.2}s infinite` }} />)}
-      </div>
-    </div>
-  );
+  if (loading) return <AnalysisLoading />;
 
   // ── 에러 화면
   if (error) return (
@@ -1265,14 +1467,17 @@ export default function Dashboard() {
             </motion.div>
 
             {/* ══════════════════════════════════════
-                ROW — 부정 콘텐츠 TOP5 | 댓글 감성
+                ROW — 부정 콘텐츠 TOP10 | 댓글 감성
+                두 카드 모두 같은 고정 높이, 내부 스크롤
             ══════════════════════════════════════ */}
             <motion.div variants={fadeUp} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 14 }}>
-              <Card>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                  <SectionLabel>부정 콘텐츠 TOP 5</SectionLabel>
+              <Card style={{ display: "flex", flexDirection: "column", height: ROW_CARD_HEIGHT }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, flexShrink: 0 }}>
+                  <SectionLabel>부정 콘텐츠 TOP 10</SectionLabel>
                 </div>
-                <TopContentList items={topContent} />
+                <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+                  <TopContentList items={topContent} />
+                </div>
               </Card>
               <CommentSentimentCard analyzedComments={analyzedComments} />
             </motion.div>

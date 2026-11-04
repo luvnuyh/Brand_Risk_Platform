@@ -49,7 +49,7 @@ def fetch_instagram_data(
             run_input=run_input
         )
 
-        dataset_id = run["defaultDatasetId"]
+        dataset_id = run.default_dataset_id
 
         print(
             f"[Instagram] dataset_id={dataset_id}"

@@ -17,7 +17,7 @@ const T = {
   textMuted:  "#94a3b8",
 };
 
-const SUGGESTIONS = ["스타벅스", "삼성전자", "카카오", "현대자동차", "쿠팡"];
+const SUGGESTIONS = ["스타벅스", "나이키", "H&M", "스파오", "유니클로"];
 
 export default function DemoInput() {
   const [brand, setBrand] = useState("");
@@ -157,7 +157,7 @@ export default function DemoInput() {
                   value={brand}
                   onChange={(e) => setBrand(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleStart()}
-                  placeholder="예: 스타벅스, 삼성전자 …"
+                  placeholder="브랜드 명을 입력해주세요."
                   style={{
                     width: "100%", padding: "13px 14px 13px 38px",
                     borderRadius: 14, outline: "none",

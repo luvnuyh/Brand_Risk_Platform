@@ -215,7 +215,7 @@ export default function Signup() {
                 value={personName}
                 onChange={(e) => setPersonName(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && addPerson()}
-                placeholder="이름 (예: 전지현)"
+                placeholder="이름을 입력해주세요."
                 style={{
                   flex: 1,
                   padding: "11px 14px",

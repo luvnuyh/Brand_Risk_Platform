@@ -1,4 +1,5 @@
-const API_BASE = "https://housing-excluded-blue-highlights.trycloudflare.com";
+
+const API_BASE = import.meta.env.VITE_API_URL;
 
 export async function signup(data) {
   const res = await fetch(`${API_BASE}/signup`, {
@@ -15,7 +16,6 @@ export async function signup(data) {
 
   return res.json();
 }
-
 
 export async function login(data) {
   const res = await fetch(`${API_BASE}/login`, {

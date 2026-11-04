@@ -4,22 +4,62 @@ import { useState } from "react";
 /* ─────────────────────────────────────────
    MOCK DATA FOR LIVE DEMO WIDGETS
 ───────────────────────────────────────── */
-const mockComments = [
-  { id: 1, platform: "instagram", text: "이 제품 완전 별로예요. 환불 요청했습니다.", sentiment: "negative", score: 82, time: "2분 전" },
-  { id: 2, platform: "naver", text: "배송이 너무 느려요. 다음엔 다른 곳 이용할 것 같아요.", sentiment: "negative", score: 67, time: "8분 전" },
-  { id: 3, platform: "youtube", text: "품질은 좋은데 가격이 좀 비싼 편이네요.", sentiment: "neutral", score: 41, time: "15분 전" },
-  { id: 4, platform: "instagram", text: "진짜 너무 만족스러워요! 재구매 확정입니다 ❤️", sentiment: "positive", score: 12, time: "22분 전" },
-  { id: 5, platform: "naver", text: "고객센터 응답이 너무 늦어요. 개선 좀 해주세요.", sentiment: "negative", score: 74, time: "31분 전" },
-];
+const randomInt = (min, max) =>
+  Math.floor(Math.random() * (max - min + 1)) + min;
 
-const platformColors = { instagram: "#e1306c", naver: "#03c75a", youtube: "#ff0000" };
-const platformIcons = { instagram: "📸", naver: "🔍", youtube: "▶" };
+const pickRandom = (arr) =>
+  arr[Math.floor(Math.random() * arr.length)];
+
+const shuffle = (arr) =>
+  [...arr].sort(() => Math.random() - 0.5);
+
+const platformColors = {
+  instagram: "#e1306c",
+  naver: "#03c75a",
+  youtube: "#ff0000",
+};
+
+const platformIcons = {
+  instagram: "📸",
+  naver: "🔍",
+  youtube: "▶",
+};
+
 const sentimentConfig = {
   negative: { color: "#ef4444", bg: "rgba(239,68,68,.1)", label: "부정" },
-  neutral:  { color: "#f59e0b", bg: "rgba(245,158,11,.1)", label: "중립" },
+  neutral: { color: "#f59e0b", bg: "rgba(245,158,11,.1)", label: "중립" },
   positive: { color: "#22c55e", bg: "rgba(34,197,94,.1)", label: "긍정" },
 };
 
+const commentPool = [
+  { text: "제품 품질이 기대 이상이에요. 정말 만족합니다!", sentiment: "positive" },
+  { text: "가격은 조금 있지만 재구매할 의향 있어요.", sentiment: "positive" },
+  { text: "배송도 빠르고 포장 상태도 좋았습니다.", sentiment: "positive" },
+  { text: "주변 사람들에게도 추천하고 싶어요.", sentiment: "positive" },
+  { text: "브랜드 이미지가 좋아서 계속 이용하고 있어요.", sentiment: "positive" },
+  { text: "제품은 괜찮은데 가격이 조금 고민되네요.", sentiment: "neutral" },
+  { text: "다른 제품과 비교해 보고 구매하려고요.", sentiment: "neutral" },
+  { text: "아직 사용 전이라 조금 더 지켜보겠습니다.", sentiment: "neutral" },
+  { text: "배송이 너무 늦어서 불편했습니다.", sentiment: "negative" },
+  { text: "고객센터 연결이 어렵고 응대도 아쉬워요.", sentiment: "negative" },
+  { text: "광고와 실제 제품이 많이 다른 것 같아요.", sentiment: "negative" },
+  { text: "제품 품질이 기대에 못 미쳐 실망했습니다.", sentiment: "negative" },
+  { text: "환불 절차가 복잡해서 다시 이용하고 싶지 않아요.", sentiment: "negative" },
+  { text: "가격 대비 만족도가 너무 낮습니다.", sentiment: "negative" },
+];
+
+const mockComments = shuffle(commentPool).slice(0, 5).map((comment, i) => ({
+  id: i + 1,
+  platform: pickRandom(["instagram", "naver", "youtube"]),
+  text: comment.text,
+  sentiment: comment.sentiment,
+  score: comment.sentiment === "negative"
+    ? randomInt(60, 95)
+    : comment.sentiment === "neutral"
+      ? randomInt(30, 59)
+      : randomInt(5, 29),
+  time: `${randomInt(1, 59)}분 전`,
+}));
 /* ─────────────────────────────────────────
    FEATURE SECTION WRAPPER
 ───────────────────────────────────────── */
@@ -75,7 +115,7 @@ function CommentStreamWidget({ comments = mockComments }) {
         <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e",
           boxShadow: "0 0 8px #22c55e", animation: "pulse 2s infinite" }} />
         <span style={{ fontSize: 12, color: "#64748b", fontWeight: 500, letterSpacing: "0.05em" }}>
-          LIVE · 실시간 댓글 모니터링
+        DEMO · 댓글 모니터링 예시
         </span>
       </div>
 
@@ -130,9 +170,15 @@ function CommentStreamWidget({ comments = mockComments }) {
    WIDGET 2: 리스크 점수 게이지
 ───────────────────────────────────────── */
 function RiskGaugeWidget() {
-  const [score] = useState(67);
-  const keywords = ["환불", "배송지연", "불만", "CS대응", "품질저하"];
+  const [score] = useState(() => randomInt(25, 90));
 
+const keywordPool = [
+  "환불", "배송지연", "불만", "CS대응", "품질저하",
+  "가격논란", "재구매", "서비스", "제품만족", "광고논란",
+  "배송문의", "브랜드신뢰", "고객응대", "추천", "불친절",
+];
+
+const [keywords] = useState(() => shuffle(keywordPool).slice(0, 5));
   const angle = (score / 100) * 180 - 90;
   const color = score > 70 ? "#ef4444" : score > 40 ? "#f59e0b" : "#22c55e";
   const label = score > 70 ? "위험" : score > 40 ? "주의" : "안전";
@@ -278,15 +324,11 @@ function StrategyWidget({ strategies = [] }) {
    WIDGET 4: 리포트 미리보기
 ───────────────────────────────────────── */
 function ReportWidget() {
-  const bars = [
-    { day: "월", neg: 12, pos: 65 },
-    { day: "화", neg: 28, pos: 52 },
-    { day: "수", neg: 67, pos: 30 },
-    { day: "목", neg: 82, pos: 18 },
-    { day: "금", neg: 45, pos: 42 },
-    { day: "토", neg: 31, pos: 58 },
-    { day: "일", neg: 19, pos: 70 },
-  ];
+  const bars = ["월", "화", "수", "목", "금", "토", "일"].map((day) => ({
+    day,
+    neg: randomInt(10, 85),
+    pos: randomInt(10, 85),
+  }));
 
   return (
     <div style={{
@@ -297,7 +339,7 @@ function ReportWidget() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
         <div>
           <p style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", marginBottom: 2 }}>주간 감성 트렌드</p>
-          <p style={{ fontSize: 11, color: "#94a3b8" }}>2025년 4월 2주차</p>
+          <p style={{ fontSize: 11, color: "#94a3b8" }}>2026년 11월 1주차</p>
         </div>
         <div style={{
           padding: "4px 10px", borderRadius: 8, fontSize: 11, fontWeight: 600,
@@ -313,7 +355,7 @@ function ReportWidget() {
               <div style={{
                 width: "100%", borderRadius: "4px 4px 0 0",
                 height: `${b.neg}%`,
-                background: i === 3 ? "#ef4444" : "rgba(239,68,68,.25)",
+                background: b.neg >= 65 ? "#ef4444" : "rgba(239,68,68,.25)",
                 transition: "background .2s",
               }} />
             </div>
@@ -324,11 +366,25 @@ function ReportWidget() {
 
       {/* Summary */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
-        {[
-          { label: "총 댓글", value: "2,841", icon: "💬" },
-          { label: "부정 비율", value: "34%", icon: "📉", alert: true },
-          { label: "리스크 피크", value: "목요일", icon: "⚠", alert: true },
-        ].map(s => (
+      {[
+  {
+    label: "총 댓글",
+    value: randomInt(800, 4500).toLocaleString(),
+    icon: "💬",
+  },
+  {
+    label: "부정 비율",
+    value: `${randomInt(15, 65)}%`,
+    icon: "📉",
+    alert: true,
+  },
+  {
+    label: "리스크 피크",
+    value: `${pickRandom(["월요일", "화요일", "수요일", "목요일", "금요일", "토요일", "일요일"])}`,
+    icon: "⚠",
+    alert: true,
+  },
+].map(s => (
           <div key={s.label} style={{
             padding: "10px 12px", borderRadius: 10,
             background: s.alert ? "rgba(239,68,68,.05)" : "#f8faff",

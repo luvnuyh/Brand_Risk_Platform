@@ -16,7 +16,7 @@ const T = {
 };
 
 const STEPS = [
-  { icon: "🔍", label: "온라인 데이터 수집 중",    sub: "YouTube · 네이버 뉴스 · Instagram",  duration: 1800 },
+  { icon: "🔍", label: "온라인 데이터 수집 중",    sub: "YouTube · 네이버 · Instagram",  duration: 1800 },
   { icon: "🧠", label: "AI 감성 분석 중",       sub: "긍부정 / 핵심 이슈 / 반응 패턴 ",             duration: 1800 },
   { icon: "📊", label: "리스크 점수 계산 중",        sub: "채널별 위험도 종합",                  duration: 1400 },
   { icon: "✨", label: "AI 브랜드 리포트 생성 중",  sub: "대응 전략 및 인사이트 도출",          duration: 1600 },

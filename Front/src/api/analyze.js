@@ -1,5 +1,4 @@
-const API_BASE = "https://housing-excluded-blue-highlights.trycloudflare.com";
-
+const API_BASE = import.meta.env.VITE_API_URL;
 // =====================================================
 // 🔹 Token
 // =====================================================
@@ -167,8 +166,8 @@ export async function generateAiReport(dashData) {
       },
 
       top_content: {
-        youtube: dashData.topContent?.youtube ?? [],
-        naver: dashData.topContent?.naver ?? [],
+        youtube: (dashData.topContent ?? []).filter((c) => c.channel),
+        naver:   (dashData.topContent ?? []).filter((c) => c.pub_date),
       },
 
       analyzed_comments: (dashData.analyzedComments ?? []).slice(0, 20),
@@ -206,6 +205,31 @@ export async function generateAiReport(dashData) {
 // =====================================================
 function toPercent(v) {
   return Math.round((v ?? 0) * 100);
+}
+
+function normalizeSourceBreakdown(sb) {
+  const normalize = (s) => {
+    if (!s) return undefined;
+    const pos = Number(s.positive_ratio ?? 0);
+    const neg = Number(s.negative_ratio ?? 0);
+    const neu = Number(s.neutral_ratio ?? 0);
+    // 0~1 스케일이면 0~100으로 변환, 이미 0~100이면 그대로
+    const scale = Math.max(pos, neg, neu) <= 1 ? 100 : 1;
+    return {
+      ...s,
+      risk_score: Math.round(s.risk_score ?? s.score ?? 0),
+      risk_level: s.risk_level ?? "low",
+      positive_ratio: Math.round(pos * scale),
+      negative_ratio: Math.round(neg * scale),
+      neutral_ratio: Math.round(neu * scale),
+    };
+  };
+
+  return {
+    youtube:   normalize(sb?.youtube),
+    naver:     normalize(sb?.naver ?? sb?.news ?? sb?.naver_news),
+    instagram: normalize(sb?.instagram),
+  };
 }
 
 // =====================================================
@@ -385,7 +409,7 @@ export function mapApiToDashboard(apiData, personsData) {
       brand_score: Math.round(score_breakdown?.brand_score ?? 0),
       person_score: Math.round(score_breakdown?.person_score ?? 0),
     },
-    sourceBreakdown: source_breakdown ?? {},
+    sourceBreakdown: normalizeSourceBreakdown(source_breakdown),
 
     // =====================================================
     // 🔹 Taxonomy

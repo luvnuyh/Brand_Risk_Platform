@@ -1,28 +1,43 @@
 import os
-import requests
 import re
+import time
+import inspect
+import requests
 from concurrent.futures import ThreadPoolExecutor
 from services.youtube_service import collect_brand_and_person_comments
 
+NEWS_URL = "https://openapi.naver.com/v1/search/news.json"
+BLOG_URL = "https://openapi.naver.com/v1/search/blog.json"
+CAFE_URL = "https://openapi.naver.com/v1/search/cafearticle.json"
+
+# 연관 인물 수집(I/O) 동시 처리 수. 429가 뜨면 2로 낮추기
+PERSON_IO_WORKERS = 3
+
+# 요청마다 TCP/TLS 연결을 새로 맺지 않도록 세션 재사용
+_session = requests.Session()
+_HEADERS = None
+
 
 # ────────────────────────────────────────────
-# 공통 헤더
+# 공통 헤더 (한 번만 만들고 로그도 한 번만)
 # ────────────────────────────────────────────
 
 def _get_headers():
-    client_id     = os.getenv("NAVER_CLIENT_ID")
-    client_secret = os.getenv("NAVER_CLIENT_SECRET")
+    global _HEADERS
+    if _HEADERS is None:
+        client_id     = os.getenv("NAVER_CLIENT_ID")
+        client_secret = os.getenv("NAVER_CLIENT_SECRET")
 
-    # ✅ API 키 누락 체크
-    if not client_id or not client_secret:
-        print("[NaverAPI] ❌ 환경변수 누락 — NAVER_CLIENT_ID / NAVER_CLIENT_SECRET 확인 필요")
-    else:
-        print(f"[NaverAPI] ✅ 인증 헤더 로드 완료 (ID: {client_id[:6]}...)")
+        if not client_id or not client_secret:
+            print("[NaverAPI] ❌ 환경변수 누락 — NAVER_CLIENT_ID / NAVER_CLIENT_SECRET 확인 필요")
+        else:
+            print(f"[NaverAPI] ✅ 인증 헤더 로드 완료 (ID: {client_id[:6]}...)")
 
-    return {
-        "X-Naver-Client-Id":     client_id,
-        "X-Naver-Client-Secret": client_secret,
-    }
+        _HEADERS = {
+            "X-Naver-Client-Id":     client_id,
+            "X-Naver-Client-Secret": client_secret,
+        }
+    return _HEADERS
 
 
 def _fetch_naver_api(url, query, max_items):
@@ -44,9 +59,8 @@ def _fetch_naver_api(url, query, max_items):
         }
 
         try:
-            res = requests.get(url, headers=headers, params=params, timeout=10)
+            res = _session.get(url, headers=headers, params=params, timeout=10)
 
-            # ✅ HTTP 상태 코드 로그
             print(f"  [Naver:{api_type}] 페이지 {page} 요청 → HTTP {res.status_code}")
 
             if res.status_code == 401:
@@ -71,7 +85,6 @@ def _fetch_naver_api(url, query, max_items):
 
         results = data.get("items", [])
 
-        # ✅ 결과 없음 감지
         if not results:
             print(f"  [Naver:{api_type}] ⚠️ 결과 없음 — 수집 종료 (총 {len(texts)}개)")
             break
@@ -107,6 +120,15 @@ def _fetch_naver_api(url, query, max_items):
     return texts, items
 
 
+def _fetch_three_channels(query: str, max_items: int):
+    """뉴스/블로그/카페를 동시에 수집"""
+    with ThreadPoolExecutor(max_workers=3) as ex:
+        news_f = ex.submit(_fetch_naver_api, NEWS_URL, query, max_items)
+        blog_f = ex.submit(_fetch_naver_api, BLOG_URL, query, max_items)
+        cafe_f = ex.submit(_fetch_naver_api, CAFE_URL, query, max_items)
+        return news_f.result(), blog_f.result(), cafe_f.result()
+
+
 # ────────────────────────────────────────────
 # 1. 브랜드 전체 수집 (뉴스 + 블로그 + 카페)
 # ────────────────────────────────────────────
@@ -116,59 +138,29 @@ def collect_brand_all(brand_name: str, max_items: int = 100) -> dict:
     print(f"[BrandCollect] 🔍 브랜드 수집 시작: '{brand_name}' (채널별 최대 {max_items}개)")
     print(f"{'='*50}")
 
-    news_url = "https://openapi.naver.com/v1/search/news.json"
-    blog_url = "https://openapi.naver.com/v1/search/blog.json"
-    cafe_url = "https://openapi.naver.com/v1/search/cafearticle.json"
-
-    with ThreadPoolExecutor(max_workers=3) as executor:
-
-        news_future = executor.submit(
-            _fetch_naver_api,
-            news_url,
-            brand_name,
-            max_items
-        )
-
-        blog_future = executor.submit(
-            _fetch_naver_api,
-            blog_url,
-            brand_name,
-            max_items
-        )
-
-        cafe_future = executor.submit(
-            _fetch_naver_api,
-            cafe_url,
-            brand_name,
-            max_items
-        )
-
-        news_texts, news_items = news_future.result()
-        blog_texts, blog_items = blog_future.result()
-        cafe_texts, cafe_items = cafe_future.result()
+    (news_texts, news_items), (blog_texts, blog_items), (cafe_texts, cafe_items) = \
+        _fetch_three_channels(brand_name, max_items)
 
     all_texts = news_texts + blog_texts + cafe_texts
-    all_items = news_items + blog_items + cafe_items
 
     print(f"\n[BrandCollect] ✅ 수집 완료 → 뉴스:{len(news_texts)} | 블로그:{len(blog_texts)} | 카페:{len(cafe_texts)} | 합계:{len(all_texts)}개")
 
-    # ✅ 수집량 경고
     if len(all_texts) == 0:
         print(f"[BrandCollect] ❌ 수집된 데이터 없음 — 브랜드명 또는 API 키 확인 필요")
     elif len(all_texts) < 10:
         print(f"[BrandCollect] ⚠️ 수집량 적음 ({len(all_texts)}개) — 분석 신뢰도 낮을 수 있음")
 
     return {
-    "news": news_items,
-    "blogs": blog_items,
-    "cafes": cafe_items,
+        "news": news_items,
+        "blogs": blog_items,
+        "cafes": cafe_items,
 
-    "news_texts": news_texts,
-    "blog_texts": blog_texts,
-    "cafe_texts": cafe_texts,
+        "news_texts": news_texts,
+        "blog_texts": blog_texts,
+        "cafe_texts": cafe_texts,
 
-    "total_articles": len(all_texts),
-}
+        "total_articles": len(all_texts),
+    }
 
 
 # ────────────────────────────────────────────
@@ -212,9 +204,46 @@ def extract_top_negative_articles(articles: list, scored_results: list, top_n: i
 
 # ────────────────────────────────────────────
 # 3. 연관 인물 리스크 일괄 분석
+#    ① 수집(I/O)은 인물별로 병렬
+#    ② 감성 분석은 전 인물 텍스트를 모아 "한 번만" 실행
+#    ③ 결과를 인물/영상별로 잘라서 사용 (재분석 없음)
 # ────────────────────────────────────────────
 
 MIN_ARTICLES_FOR_PERSON = 1
+
+
+def _score(sentiment_score_fn, texts):
+    """인물 분석에는 taxonomy(GPT 호출)가 필요 없으므로 지원되면 끈다."""
+    try:
+        if "with_taxonomy" in inspect.signature(sentiment_score_fn).parameters:
+            return sentiment_score_fn(texts, with_taxonomy=False)
+    except (TypeError, ValueError):
+        pass
+    return sentiment_score_fn(texts)
+
+
+def _collect_person_bundle(brand_name: str, name: str):
+    t0 = time.perf_counter()
+    data = collect_person_all(brand_name, name, max_items=30)
+    t_naver = time.perf_counter() - t0
+
+    # 기사가 없으면 어차피 스킵할 인물이라 YouTube는 호출하지 않는다
+    if data["total_articles"] < MIN_ARTICLES_FOR_PERSON:
+        return name, data, None, {"naver": t_naver, "youtube": 0.0}
+
+    t1 = time.perf_counter()
+    try:
+        youtube_data = collect_brand_and_person_comments(
+            brand_name, [name],
+            max_videos=5,
+            max_comments_per_video=100,
+            include_brand=False,      # 브랜드 영상은 인물 분석과 무관 (인물마다 중복 수집되던 부분)
+        )
+    except Exception as e:
+        print(f"[PersonRisk] ⚠️ '{name}' YouTube 수집 실패 → 기사만으로 분석: {e}")
+        youtube_data = {"videos": []}
+
+    return name, data, youtube_data, {"naver": t_naver, "youtube": time.perf_counter() - t1}
 
 
 def analyze_person_risks(
@@ -222,103 +251,109 @@ def analyze_person_risks(
     person_names:      list,
     analyzer,
     sentiment_score_fn
-) -> tuple:
+) -> list:
+    t_all = time.perf_counter()
     print(f"\n{'='*50}")
     print(f"[PersonRisk] 👤 연관 인물 분석 시작: {person_names}")
     print(f"{'='*50}")
 
-    person_results = []
+    if not person_names:
+        return []
 
-    for name in person_names:
-        print(f"\n[PersonRisk] ── '{name}' 처리 중...")
+    # ── ① 수집 (인물별 병렬, 입력 순서 유지) ─────────────
+    t0 = time.perf_counter()
+    workers = max(1, min(PERSON_IO_WORKERS, len(person_names)))
+    with ThreadPoolExecutor(max_workers=workers) as ex:
+        bundles = list(ex.map(lambda n: _collect_person_bundle(brand_name, n), person_names))
+    t_collect = time.perf_counter() - t0
 
-        data  = collect_person_all(brand_name, name, max_items=30)
-        youtube_data = collect_brand_and_person_comments(
-            brand_name,
-            [name],
-            max_videos=5
-        )
+    # ── ② 전 인물 텍스트를 하나로 모으고 위치(offset) 기록 ──
+    all_texts = []
+    plan = []
+
+    for name, data, youtube_data, timing in bundles:
         total = data["total_articles"]
 
-        # ✅ 기사 수 부족 감지
-        if total < MIN_ARTICLES_FOR_PERSON:
+        if youtube_data is None:
             print(f"[PersonRisk] ⚠️ '{name}' — 기사 수 부족 ({total}개) → 스킵")
             continue
 
-        youtube_comments = []
+        start = len(all_texts)
+        all_texts.extend(data["comments"])
+        article_end = len(all_texts)
 
-        for video in youtube_data["videos"]:
-            youtube_comments.extend(
-                [c["text"] for c in video["comments"]]
-            )
-
-        texts = data["comments"] + youtube_comments
-        articles = data["articles"]
-
-        print(f"[PersonRisk] '{name}' → 감성 분석 중... ({total}개)")
-        scored_results = sentiment_score_fn(texts)
-        sentiments     = [r["sentiment"] for r in scored_results]
-
-        result       = analyzer.calculate_risk(scored_results)
-        top_articles = extract_top_negative_articles(articles, scored_results, top_n=3)
-        top_videos = []
-        for video in youtube_data["videos"]:
-
-            comments = [c["text"] for c in video["comments"]]
-
+        video_slices = []
+        for video in youtube_data.get("videos", []):
+            comments = [c["text"] for c in video.get("comments", [])]
             if not comments:
                 continue
+            s = len(all_texts)
+            all_texts.extend(comments)
+            video_slices.append((video, s, len(all_texts)))
 
-            scores = sentiment_score_fn(comments)
+        plan.append({
+            "name": name, "data": data, "total": total,
+            "start": start, "article_end": article_end, "end": len(all_texts),
+            "videos": video_slices,
+        })
 
-            neg_ratio = (
-                sum(
-                    1
-                    for s in scores
-                    if s["sentiment"] == "negative"
-                )
-                / len(scores)
-            )
+    # ── ③ 감성 분석 1회 ────────────────────────────────
+    t1 = time.perf_counter()
+    print(f"[PersonRisk] 감성 분석 일괄 실행 ({len(plan)}명, 총 {len(all_texts)}개 텍스트)")
+    scored_all = _score(sentiment_score_fn, all_texts) if all_texts else []
+    t_score = time.perf_counter() - t1
 
+    # ── ④ 인물별로 잘라서 결과 조립 ─────────────────────
+    person_results = []
+
+    for p in plan:
+        name = p["name"]
+        scored = scored_all[p["start"]:p["end"]]
+        if not scored:
+            continue
+
+        result = analyzer.calculate_risk(scored)
+
+        article_scored = scored_all[p["start"]:p["article_end"]]
+        top_articles = extract_top_negative_articles(p["data"]["articles"], article_scored, top_n=3)
+
+        top_videos = []
+        for video, s, e in p["videos"]:
+            video_scored = scored_all[s:e]
+            neg = sum(1 for r in video_scored if r["sentiment"] == "negative")
             top_videos.append({
-                "title": video["title"],
-                "url": video["url"],
-                "channel": video["channel"],
-                "neg_ratio": round(neg_ratio, 4),
-                "comment_count": len(comments),
+                "title":         video["title"],
+                "url":           video["url"],
+                "channel":       video["channel"],
+                "neg_ratio":     round(neg / len(video_scored), 4),
+                "comment_count": len(video_scored),
             })
 
-        top_videos.sort(
-            key=lambda x: x["neg_ratio"],
-            reverse=True
-        )
-
+        top_videos.sort(key=lambda x: x["neg_ratio"], reverse=True)
         top_videos = top_videos[:3]
-        impact_message = _get_impact_message(result["risk_level"])
 
         person_results.append({
             "name":              name,
-            "articles_analyzed": total,
+            "articles_analyzed": p["total"],
             "positive_ratio":    result["positive_ratio"],
             "negative_ratio":    result["negative_ratio"],
             "neutral_ratio":     result["neutral_ratio"],
             "risk_score":        result["risk_score"],
             "risk_level":        result["risk_level"],
-            "impact_message":    impact_message,
+            "impact_message":    _get_impact_message(result["risk_level"]),
             "top_articles":      top_articles,
-            "top_videos": top_videos,
+            "top_videos":        top_videos,
         })
 
-        # ✅ 리스크 레벨별 이모지
-        level_emoji = {
-            "low": "🟢", "moderate": "🟡", "high": "🟠", "critical": "🔴"
-        }.get(result["risk_level"], "⚪")
-
+        level_emoji = {"low": "🟢", "moderate": "🟡", "high": "🟠", "critical": "🔴"}.get(result["risk_level"], "⚪")
         print(f"[PersonRisk] {level_emoji} '{name}' → 점수:{result['risk_score']} ({result['risk_level']}) | 부정:{result['negative_ratio']*100:.1f}% | top기사:{len(top_articles)}개")
-        
+
     print(
-        f"\n[PersonRisk] ✅ 전체 인물 분석 완료 → "
-        f"{len(person_results)}명 처리"
+        f"\n[PersonRisk] ✅ 전체 인물 분석 완료 → {len(person_results)}명 처리\n"
+        f"[PersonTiming] total={time.perf_counter() - t_all:.2f}s | "
+        f"collect={t_collect:.2f}s (인물별 naver/youtube: "
+        + ", ".join(f"{b[0]}={b[3]['naver']:.1f}/{b[3]['youtube']:.1f}s" for b in bundles)
+        + f") | sentiment={t_score:.2f}s"
     )
 
     return person_results
@@ -333,10 +368,8 @@ def _get_impact_message(risk_level: str) -> str:
     }.get(risk_level, "알 수 없음")
 
 
-
-
 # ────────────────────────────────────────────
-# 4. 인물 전체 수집 (뉴스 + 블로그 + 카페)
+# 4. 인물 전체 수집 (뉴스 + 블로그 + 카페, 동시 호출)
 # ────────────────────────────────────────────
 
 def collect_person_all(brand_name: str, person_name: str, max_items: int = 30) -> dict:
@@ -344,13 +377,8 @@ def collect_person_all(brand_name: str, person_name: str, max_items: int = 30) -
 
     print(f"\n[PersonCollect] 🔍 '{person_name}' 수집 시작 → 쿼리: '{query}'")
 
-    news_url = "https://openapi.naver.com/v1/search/news.json"
-    blog_url = "https://openapi.naver.com/v1/search/blog.json"
-    cafe_url = "https://openapi.naver.com/v1/search/cafearticle.json"
-
-    news_texts, news_items = _fetch_naver_api(news_url, query, max_items)
-    blog_texts, blog_items = _fetch_naver_api(blog_url, query, max_items)
-    cafe_texts, cafe_items = _fetch_naver_api(cafe_url, query, max_items)
+    (news_texts, news_items), (blog_texts, blog_items), (cafe_texts, cafe_items) = \
+        _fetch_three_channels(query, max_items)
 
     all_texts = news_texts + blog_texts + cafe_texts
     all_items = news_items + blog_items + cafe_items

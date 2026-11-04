@@ -1,6 +1,7 @@
+import uuid
 import json
 import asyncio
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import Optional, List
@@ -9,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 from services.gpt_service import generate_risk_report
 from services.instagram_service import fetch_instagram_data
 
-from database import get_db
+from database import get_db, SessionLocal
 
 from services.youtube_service import (
     collect_brand_and_person_comments
@@ -97,7 +98,7 @@ def aggregate_taxonomy(results):
         virality = taxonomy.get("virality")
 
         if virality:
-            virality_counter[virality] += 1
+            virality_counter[virality] = virality_counter.get(virality, 0) + 1
 
     return {
         "issue_types": issue_counter,
@@ -387,7 +388,8 @@ def risk_report(
 
     brand_name = current_user.brand.name
 
-    summary = request.get("summary", {})
+    # summary로 감싸 보내는 형식과 결과 객체를 직접 보내는 형식 모두 지원
+    summary = request.get("summary", request)
 
     report = generate_risk_report(
         brand_name,
@@ -401,10 +403,87 @@ def risk_report(
 # =====================================================
 # 🔥 메인 분석 API
 # =====================================================
+# =====================================================
+# 백그라운드 분석 작업 관리
+# =====================================================
+analysis_tasks = {}
+
+
+def run_analysis_task(task_id: str, user_id: int):
+    db = SessionLocal()
+
+    try:
+        analysis_tasks[task_id]["status"] = "running"
+
+        user = db.query(User).filter(User.id == user_id).first()
+
+        if not user:
+            raise Exception("사용자를 찾을 수 없습니다.")
+
+        result = analyze_brand_sync(db, user)
+
+        analysis_tasks[task_id].update({
+            "status": "completed",
+            "result": result
+        })
+
+    except Exception as e:
+        db.rollback()
+        print("[Background Analysis Error]", repr(e))
+
+        analysis_tasks[task_id].update({
+            "status": "failed",
+            "error": str(e)
+        })
+
+    finally:
+        db.close()
+
+
 @router.post("/analyze")
 def analyze_brand(
-    db: Session = Depends(get_db),
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user)
+):
+    task_id = str(uuid.uuid4())
+
+    analysis_tasks[task_id] = {
+        "status": "queued",
+        "user_id": current_user.id
+    }
+
+    background_tasks.add_task(
+        run_analysis_task,
+        task_id,
+        current_user.id
+    )
+
+    return {
+        "task_id": task_id,
+        "status": "queued"
+    }
+
+
+@router.get("/analyze/status/{task_id}")
+def get_analysis_status(
+    task_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    task = analysis_tasks.get(task_id)
+
+    if not task or task["user_id"] != current_user.id:
+        raise HTTPException(status_code=404, detail="작업을 찾을 수 없습니다.")
+
+    return {
+        key: value
+        for key, value in task.items()
+        if key != "user_id"
+    }
+
+
+def analyze_brand_sync(
+    db: Session,
+    current_user: User
 ):
 
     brand_name = current_user.brand.name
@@ -451,11 +530,11 @@ def analyze_brand(
 
     youtube_videos = youtube_data.get("videos", [])
 
-    news_texts = naver_data["news_texts"]
-    blog_texts = naver_data["blog_texts"]
-    cafe_texts = naver_data["cafe_texts"]
-
-    # instagram_texts = extract_texts(instagram_texts)
+    # 채널별 텍스트 형식을 통일해 분석 결과와 정확히 매칭
+    news_texts = extract_texts(naver_data.get("news_texts", []))
+    blog_texts = extract_texts(naver_data.get("blog_texts", []))
+    cafe_texts = extract_texts(naver_data.get("cafe_texts", []))
+    instagram_texts = extract_texts(instagram_texts)
 
     naver_articles = (
         naver_data.get("news", []) +
@@ -518,17 +597,35 @@ def analyze_brand(
     # 🔹 채널별 리스크 계산
     # =====================================================
 
-    youtube_results = analyze_comments_bulk_with_score(
-        youtube_comments
-    ) if youtube_comments else []
+    # 전체 댓글을 이미 한 번 분석했으므로, 같은 모델을 채널별로
+    # 다시 실행하지 않고 전체 분석 결과를 채널별로 나눠 재사용한다.
+    youtube_count = len(youtube_comments)
+    naver_count = len(news_texts) + len(blog_texts) + len(cafe_texts)
+    instagram_count = len(instagram_texts)
 
-    naver_results = analyze_comments_bulk_with_score(
-        news_texts + blog_texts + cafe_texts
-    ) if (news_texts + blog_texts + cafe_texts) else []
+    youtube_results = analyzed_results[:youtube_count]
+    naver_results = analyzed_results[
+        youtube_count:youtube_count + naver_count
+    ]
+    instagram_results = analyzed_results[
+        youtube_count + naver_count:
+        youtube_count + naver_count + instagram_count
+    ]
 
-    instagram_results = analyze_comments_bulk_with_score(
-        instagram_texts
-    ) if instagram_texts else []
+    # GPT 리포트에서 원문과 플랫폼을 구분할 수 있도록 메타데이터 추가
+    for index, result in enumerate(analyzed_results):
+        if not isinstance(result, dict):
+            continue
+
+        if not result.get("text") and index < len(all_texts):
+            result["text"] = all_texts[index]
+
+        if index < youtube_count:
+            result["platform"] = "youtube"
+        elif index < youtube_count + naver_count:
+            result["platform"] = "naver"
+        else:
+            result["platform"] = "instagram"
 
 
     youtube_sentiments = [
@@ -672,13 +769,8 @@ def analyze_brand(
 
     if naver_articles:
 
-        naver_text_list = extract_texts(
-            naver_articles
-        )
-
-        scored_naver = analyze_comments_bulk_with_score(
-            naver_text_list
-        )
+        # 위에서 분석한 네이버 결과를 재사용 (중복 추론 방지)
+        scored_naver = naver_results
 
         paired = [
             {
@@ -774,7 +866,9 @@ def analyze_brand(
 
         "crisis_feed": crisis_feed,
 
-        "analyzed_comments": analyzed_results[:50],
+        # 전체 분석 결과를 전달해 AI 리포트가 일부 샘플에만 의존하지 않도록 함
+        "analyzed_comments": analyzed_results,
+        "analyzed_comments_count": len(analyzed_results),
 
         "person_risk": {
             "person_score": person_risk_score,
